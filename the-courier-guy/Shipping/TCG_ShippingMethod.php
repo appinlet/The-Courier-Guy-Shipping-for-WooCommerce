@@ -154,6 +154,10 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     private function addRate($rate, $package, $percentageMarkup, $priceRateOverrides, $labelOverrides)
     {
+        
+        $free_ship = $this->get_instance_option('free_shipping');
+        $amount_for_free_shipping = $this->get_instance_option('amount_for_free_shipping');
+        $rates_for_free_shipping = $this->get_instance_option('rates_for_free_shipping');
         $rateTotal = $rate['total'];
         if ($rateTotal > 0) {
             $rateService = $rate['service'];
@@ -170,6 +174,17 @@ class TCG_Shipping_Method extends WC_Shipping_Method
             if (!empty($labelOverrides[$rateService])) {
                 $rateLabel = $labelOverrides[$rateService];
             }
+
+            //Check if free shipping is required
+            if ($free_ship == 'yes' ){
+                global $woocommerce;
+
+                if ($woocommerce->cart->subtotal > $amount_for_free_shipping && in_array($rate['service'], $rates_for_free_shipping)){
+                    $rateLabel = $rateLabel . ': Free Shipping';
+                    $totalPrice = 0;
+                }
+            }
+            
             $shippingMethodId = 'the_courier_guy' . ':' . $rateService . ':' . $this->instance_id;
             $args = [
                 'id' => $shippingMethodId,
@@ -344,6 +359,35 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'default' => '4',
                 'placeholder' => '4',
             ],
+            'free_shipping' => [
+                'title' => __('Enable free shipping ', 'woocommerce'),
+                'type' => 'checkbox',
+                'description' => __('This will enable free shipping over a specified amount', 'woocommerce'),
+                'default' => ''
+            ],
+            'rates_for_free_shipping' => [
+                'title' => __('Rates for free Shipping', 'woocommerce'),
+                'type' => 'multiselect',
+                'class' => 'wc-enhanced-select',
+                'css' => 'width: 450px;',
+                'description' => __('Select the rates that you wish to enable for free shipping', 'woocommerce'),
+                'default' => '',
+                'options' => $this->getRateOptions(),
+                'custom_attributes' => [
+                    'data-placeholder' => __('Select the rates you would like to enable for free shipping', 'woocommerce')
+                ]
+            ],
+            'amount_for_free_shipping' => [
+                'title' => __('Amount for free Shipping', 'woocommerce'),
+                'type' => 'number',
+                'description' => __('Enter the amount for free shipping when enabled', 'woocommerce'),
+                'default' => '1000',
+                'custom_attributes' => [
+                    'min' => '0'
+                ]
+                
+            ],
+            
         ];
         $this->instance_form_fields = $fields;
     }
