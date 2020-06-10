@@ -450,6 +450,30 @@ class TCG_Plugin extends CustomPlugin
         return $fields;
     }
 
+    private function getSurburbLabel(){
+        $shippingMethodSettings = $this->getShippingMethodSettings();
+        if (!empty($shippingMethodSettings)) {
+            if(!empty($shippingMethodSettings['Suburb_title'])){
+                return $shippingMethodSettings['Suburb_title'];
+            }
+            else{
+                return 'Area / Suburb';   
+            }
+        }
+        return 'Area / Suburb'; 
+    }
+    private function getSurburblocation(){
+        $shippingMethodSettings = $this->getShippingMethodSettings();
+        if (!empty($shippingMethodSettings)) {
+            if(!empty($shippingMethodSettings['Suburb_location'])){
+                return $shippingMethodSettings['Suburb_location'];
+            }
+            else{
+                return '_country';   
+            }
+        }
+        return '_country'; 
+    }
 
     /**
      * @param string $addressType
@@ -467,13 +491,13 @@ class TCG_Plugin extends CustomPlugin
         $addressFields = $this->insertValueAfterPosition($addressFields, [
             $addressType . '_tcg_place_lookup' => [
                 'type' => 'tcg_place_lookup',
-                'label' => 'Area / Suburb',
+                'label' => $this->getSurburbLabel(),
                 'options' => ['Search Suburb...'],
                 'required' => $required,
-                'placeholder' => 'Area / Suburb',
+                'placeholder' => $this->getSurburbLabel(),
                 'class' => ['form-row-wide', 'address-field', 'tcg-suburb-field'],
             ],
-        ], $addressType . '_country');
+        ], $addressType . $this->getSurburblocation());
         $addressFields = array_merge($addressFields, [
             $addressType . '_postcode' => [
                 'type' => 'text',
@@ -481,7 +505,7 @@ class TCG_Plugin extends CustomPlugin
                 'required' => true,
                 'class' => ['form-row-last'],
             ]
-        ]);
+        ]); 
         $addressFields[$addressType . '_insurance'] = [
             'type' => 'checkbox',
             'label' => 'Would you like to include Shipping Insurance',
