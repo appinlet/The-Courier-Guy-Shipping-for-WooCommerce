@@ -387,6 +387,22 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 ]
                 
             ],
+            'Suburb_location' => [
+                'title' => __('Suburb location', 'woocommerce'),
+                'type' => 'select',
+                'css' => 'width: 450px;',
+                'description' => __('Select the location of the Suburb field on checkout form.', 'woocommerce').'<br />'.__('The Suburb field will be displayed after the selected location.', 'woocommerce'),
+                'default' => '',
+                'options' => $this->getSuburbLocationOptions()
+            ],
+            'Suburb_title' => [
+                'title' => __('Suburb title', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Enter the title for the Suburb field.', 'woocommerce').'<br />'.__('This custom Suburb Title will be displayed on the checkout form.', 'woocommerce'),
+                'default' => 'Area/Suburb',
+                
+            ],
+            
             
         ];
         $this->instance_form_fields = $fields;
@@ -399,6 +415,14 @@ class TCG_Shipping_Method extends WC_Shipping_Method
     {
         //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
         return json_decode('{"AIR":"AIR: Airfreight","ECO":"ECO: Economy (Domestic Road Freight)","LLS":"LLS: Local Late Sameday","LOF":"LOF: Local Overnight Flyer","LOX":"LOX: Local Overnight Parcels","LSE":"LSE: Local Sameday Economy","LSF":"LSF: Local Sameday Flyer","LSX":"LSX: Local Sameday Express","OVN":"OVN: Overnight Courier","SDX":"SDX: Express Sameday"}');
+    }
+     /**
+     *getSuburbLocationOptions() -> returns an array of locations from the checkout form
+     * @return array|mixed|object
+     */
+    private function getSuburbLocationOptions()
+    {
+        return json_decode('{"_country":"Country "," _state":"Province","_city":"City/Town","_address_2":"Street Address","_postcode":"Postcode/ZIP"}');
     }
 
     /**
