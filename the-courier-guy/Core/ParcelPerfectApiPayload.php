@@ -1,7 +1,6 @@
 <?php
-
 /**
- * @author  Clint Lynch
+ * @author The Courier Guy
  * @package tcg/core
  * @version 1.0.0
  */

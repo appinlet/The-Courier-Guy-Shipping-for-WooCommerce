@@ -1,10 +1,10 @@
 === The Courier Guy Shipping for WooCommerce ===
-Contributors: lynchclint, appinlet
+Contributors: appinlet
 Tags: ecommerce, e-commerce, woocommerce, shipping, courier
 Requires at least: 4.9.8
 Tested up to: 5.4
 Requires PHP: 5.6
-Stable tag: 4.0.10
+Stable tag: 4.1.1
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 

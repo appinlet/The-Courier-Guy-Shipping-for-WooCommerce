@@ -6,7 +6,7 @@ use Dompdf\Options;
 Use Picqer\Barcode\BarcodeGeneratorPNG;
 
 /**
- * @author  Clint Lynch
+ * @author The Courier Guy
  * @package tcg/core
  * @version 1.0.0
  */
@@ -67,7 +67,7 @@ class TCG_Plugin extends CustomPlugin
         $customShippingProperties = $this->getShippingCustomProperties();
         $placeId = $customShippingProperties['tcg_place_id'];
         $placeLabel = $customShippingProperties['tcg_place_label'];
-        //@todo The setting of these additional billing and shipping properties is legacy from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The setting of these additional billing and shipping properties is legacy from an older version of the plugin.
         update_post_meta($orderId, '_billing_area', $placeId);
         update_post_meta($orderId, '_shipping_place', $placeLabel);
         update_post_meta($orderId, '_shipping_area', $placeId);
@@ -155,7 +155,7 @@ class TCG_Plugin extends CustomPlugin
      */
     public function addExtraEmailFields($keys)
     {
-        //@todo This naming of this post meta data is legacy from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo This naming of this post meta data is legacy from an older version of the plugin.
         $keys['Waybill'] = 'dawpro_waybill';
         return $keys;
     }
@@ -230,7 +230,7 @@ class TCG_Plugin extends CustomPlugin
         if (!empty($uploadsDirectory)) {
             $orderId = sanitize_text_field($_GET['order_id']);
             $order = wc_get_order($orderId);
-            //@todo This naming of this post meta data is legacy from an older version of the plugin NOT developed by Clint Lynch.
+            //@todo This naming of this post meta data is legacy from an older version of the plugin.
             $waybillNumber = get_post_meta($order->get_id(), 'dawpro_waybill', true);
             $barcodePath = $this->getBarcodeImagePath($waybillNumber);
             $parcelPerfectApiPayload = $this->getParcelPerfectApiPayload();
@@ -383,7 +383,7 @@ class TCG_Plugin extends CustomPlugin
      */
     public function getSuburbFormFieldMarkUp($field, $key, $args, $value)
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         if ($args['required']) {
             $args['class'][] = 'validate-required';
             $required = ' <abbr class="required" title="' . esc_attr__('required', 'woocommerce') . '">*</abbr>';
@@ -517,7 +517,7 @@ class TCG_Plugin extends CustomPlugin
             'type' => 'hidden',
             'required' => false,
         ];
-        //@todo The setting of these additional billing and shipping properties is legacy from an older version of the plugin NOT developed by Clint Lynch. This is to override legacy properties to invalidate cached required validation.
+        //@todo The setting of these additional billing and shipping properties is legacy from an older version of the plugin. This is to override legacy properties to invalidate cached required validation.
         $addressFields[$addressType . '_area'] = $legacyFieldProperties;
         $addressFields[$addressType . '_place'] = $legacyFieldProperties;
         $fields[$addressType] = $addressFields;
@@ -529,7 +529,7 @@ class TCG_Plugin extends CustomPlugin
      */
     public function removeCachedShippingPackages()
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $packages = WC()->cart->get_shipping_packages();
         foreach ($packages as $key => $value) {
             $shipping_session = "shipping_for_package_$key";
@@ -542,7 +542,7 @@ class TCG_Plugin extends CustomPlugin
      */
     public function getSuburbs()
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $term = sanitize_text_field($_GET['q']['term']);
         $dp_areas = [];
         $payloadData = [
@@ -565,7 +565,7 @@ class TCG_Plugin extends CustomPlugin
      */
     public function localizeJSVariables()
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch, however slightly refactored.
+        //@todo The contents of this method is legacy code from an older version of the plugin, however slightly refactored.
         $southAfricaOnly = false;
         $shippingMethodSettings = $this->getShippingMethodSettings();
         if (!empty($shippingMethodSettings) && !empty($shippingMethodSettings['south_africa_only']) && $shippingMethodSettings['south_africa_only'] == 'yes') {
@@ -844,7 +844,7 @@ class TCG_Plugin extends CustomPlugin
      */
     private function updateOrderWaybill($order, $waybill)
     {
-        //@todo This naming of this post meta data is legacy from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo This naming of this post meta data is legacy from an older version of the plugin.
         if (!empty($order) && !empty($waybill)) {
             $currentWaybill = get_post_meta($order->get_id(), 'dawpro_waybill', true);
             if (!empty($currentWaybill)) {
@@ -860,7 +860,7 @@ class TCG_Plugin extends CustomPlugin
      */
     private function updateOrderCollectionNumber($order, $collectionNumber)
     {
-        //@todo This naming of this post meta data is legacy from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo This naming of this post meta data is legacy from an older version of the plugin.
         $currentCollectionNumber = get_post_meta($order->get_id(), 'dawpro_collectno', true);
         if (!empty($currentCollectionNumber)) {
             $currentCollectionNumber = $currentCollectionNumber . ',';

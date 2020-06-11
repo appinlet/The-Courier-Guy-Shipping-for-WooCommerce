@@ -3,7 +3,7 @@
 use Dompdf\Adapter\CPDF;
 
 /**
- * @author  Clint Lynch
+ * @author The Courier Guy
  * @package tcg/shipping
  * @version 1.0.0
  */
@@ -79,7 +79,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 }
                 //The id variable must be changed back, as this is changed in addRate method on this class.
                 //@see TCG_Shipping_Method::addRate()
-                //@todo This logic is legacy from an older version of the plugin NOT developed by Clint Lynch, there must be a better way, no time now.
+                //@todo This logic is legacy from an older version of the plugin, there must be a better way, no time now.
                 $this->id = 'the_courier_guy';
             }
         }
@@ -195,7 +195,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'package' => $package
             ];
             //The id variable must be changed, as this is used in the 'add_rate' method on the parent class WC_Shipping_Method.
-            //@todo This logic is legacy from an older version of the plugin NOT developed by Clint Lynch, there must be a better way, no time now.
+            //@todo This logic is legacy from an older version of the plugin, there must be a better way, no time now.
             $this->id = $shippingMethodId;
             $this->add_rate($args);
         }
@@ -206,7 +206,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     private function overrideFormFieldsVariable()
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $fields = [
             'title' => [
                 'title' => __('Title', 'woocommerce'),
@@ -413,7 +413,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     private function getRateOptions()
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         return json_decode('{"AIR":"AIR: Airfreight","ECO":"ECO: Economy (Domestic Road Freight)","LLS":"LLS: Local Late Sameday","LOF":"LOF: Local Overnight Flyer","LOX":"LOX: Local Overnight Parcels","LSE":"LSE: Local Sameday Economy","LSF":"LSF: Local Sameday Flyer","LSX":"LSX: Local Sameday Express","OVN":"OVN: Overnight Courier","SDX":"SDX: Express Sameday"}');
     }
      /**
@@ -518,7 +518,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     public function generate_tcg_pdf_paper_size_html($key, $data)
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $field_key = $this->get_field_key($key);
         $defaults = [
             'title' => '',
@@ -571,7 +571,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     public function generate_tcg_shop_area_html($key, $data)
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $field_key = $this->get_field_key($key);
         $defaults = [
             'title' => '',
@@ -629,7 +629,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     public function generate_tcg_percentage_html($key, $data)
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $field_key = $this->get_field_key($key);
         $defaults = [
             'title' => '',
@@ -693,7 +693,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     public function generate_tcg_text_with_disclaimer_html($key, $data)
     {
-        //@todo The contents of this method is legacy code from an older version of the plugin NOT developed by Clint Lynch.
+        //@todo The contents of this method is legacy code from an older version of the plugin.
         $field_key = $this->get_field_key($key);
         $defaults = [
             'title' => '',

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @author  Clint Lynch
+ * @author The Courier Guy
  * @package ls-framework/core
  * @version 1.0.0
  */

@@ -2,10 +2,10 @@
 /**
  * Plugin Name: The Courier Guy Shipping for WooCommerce
  * Description: The Courier Guy WP & Woocommerce Shipping functionality.
- * Author: Lynch Solutions
- * Author URI: http://lynchsolutions.co.za/
+ * Author: The Courier Guy
+ * Author URI: https://www.thecourierguy.co.za/
  * Contributor: App Inlet
- * Version: 4.0.10
+ * Version: 4.1.1
  * Plugin Slug: wp-plugin-the-courier-guy
  * Text Domain: the-courier-guy
  */
