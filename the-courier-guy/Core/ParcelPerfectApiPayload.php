@@ -2,7 +2,7 @@
 /**
  * @author The Courier Guy
  * @package tcg/core
- * @version 1.0.0
+ * @version 1.0.1
  */
 class ParcelPerfectApiPayload
 {
@@ -34,6 +34,8 @@ class ParcelPerfectApiPayload
             'origpers' => $parameters['company_name'],
             'origpercontact' => $parameters['contact_name'],
             'origperpcode' => $parameters['shopPostalCode'],
+            'notifyorigpers' => 1,
+            'origperemail' => $parameters['shopEmail'],
         ];
     }
 
@@ -73,6 +75,8 @@ class ParcelPerfectApiPayload
             'destpers' => $customer->get_shipping_first_name() . ' ' . $customer->get_shipping_last_name(),
             'destpercontact' => $customer->get_billing_phone(),
             'destperpcode' => $postCode,
+            'notifydestpers' => 1,
+            'destperemail' => $destination['email'],
         ];
     }
 
@@ -94,6 +98,8 @@ class ParcelPerfectApiPayload
             'destpers' => $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name(),
             'destpercontact' => $order->get_billing_phone(),
             'destperpcode' => $order->get_shipping_postcode(),
+            'notifydestpers' => 1,
+            'destperemail' => $order->get_billing_email(),
         ];
     }
 
@@ -137,103 +143,170 @@ class ParcelPerfectApiPayload
      */
     private function getContentsPayload($parameters, $items)
     {
-        $result = [];
-        if (!empty($items)) {
-            $itemsByProductQuantityPerParcel = [];
-            foreach ($items as $item_id => $values) {
-                $productQuantityPerParcel = (int)get_post_meta($values['product_id'], 'product_quantity_per_parcel', true);
-                if (empty($productQuantityPerParcel)) {
-                    $productQuantityPerParcel = (int)$parameters['product_quantity_per_parcel'];
-                    if (empty($productQuantityPerParcel)) {
-                        $productQuantityPerParcel = 1;
-                    }
-                }
-                $item[$item_id] = $values;
-                if (array_key_exists($productQuantityPerParcel, $itemsByProductQuantityPerParcel)) {
-                    $itemByProductQuantityPerParcel = $itemsByProductQuantityPerParcel[$productQuantityPerParcel];
-                    unset($itemsByProductQuantityPerParcel[$productQuantityPerParcel]);
-                } else {
-                    $itemByProductQuantityPerParcel = [];
-                }
-                $itemByProductQuantityPerParcel[$item_id] = $values;
-                $itemsByProductQuantityPerParcel[$productQuantityPerParcel] = $itemByProductQuantityPerParcel;
+        /**
+         * Logic for getting shipping items / parcels
+         * If the product meta-value 'product_quantity_per_parcel' is set use that
+         *  - If 0 -> not set, if 1 -> single item only, if >1 -> use that value
+         *  - If the product meta-values 'product_length|width|height_per_parcel' are set use them
+         *  - Otherwise use factorise() to calculate the parcel dimensions
+         * If the global meta-value 'product_quantity_per_parcel' is set use that
+         *  - If "" -> not set, if 1 -> single item only, if >1 -> use that value
+         *  - If the global meta-values 'product_length|width|height_per_parcel' are set use them
+         *  - Otherwise use factorise() to calculate the global parcel dimensions
+         * Else only single item parcels
+         */
+        $globalParcelItems = $globalParcelLength = $globalParcelWidth = $globalParcelHeight = 0;
+        $globalParcelItems = (int) $parameters['product_quantity_per_parcel'] > 0 ? (int) $parameters['product_quantity_per_parcel'] : $globalParcelItems;
+
+        if ( $globalParcelItems > 0
+            && (int) $parameters['product_length_per_parcel'] > 0
+            && (int) $parameters['product_width_per_parcel'] > 0
+            && (int) $parameters['product_height_per_parcel'] > 0
+        ) {
+            $globalParcelDim[0] = (int) $parameters['product_length_per_parcel'];
+            $globalParcelDim[1] = (int) $parameters['product_width_per_parcel'];
+            $globalParcelDim[2] = (int) $parameters['product_height_per_parcel'];
+            sort( $globalParcelDim );
+        }
+
+        $maxProductQuantityPerParcel = null;
+        $r1                          = [];
+        $k                           = 1;
+        $j                           = 0;
+        foreach ( $items as $item_id => $values ) {
+            $productQuantityPerParcel = (int) get_post_meta( $values['product_id'], 'product_quantity_per_parcel', true );
+            switch ( $productQuantityPerParcel ) {
+                case 0:
+                    $maxProductQuantityPerParcel = $globalParcelItems > 1 ? $globalParcelItems : 1;
+                    break;
+                case 1:
+                    $maxProductQuantityPerParcel = 1;
+                    break;
+                default:
+                    $maxProductQuantityPerParcel = $productQuantityPerParcel;
             }
-            $k = 1;
-            foreach ($itemsByProductQuantityPerParcel as $productQuantityPerParcel => $items) {
-                $i = 1;
-                foreach ($items as $item_id => $values) {
-                    $_product = new WC_Product($values['product_id']);
-                    $prod = get_post($values['product_id']);
-                    $slug = $prod->post_title;
-                    if ($i > 1 && $i <= $productQuantityPerParcel) {
-                        $entry = $result[($k - 1)];
-                        $entry['desc'] = $entry['desc'] . ', ' . $slug;
-                        $entry['pieces'] = ((int)$entry['pieces'] + (int)$values['quantity']);
-                        if ($_product->has_dimensions()) {
-                            $width = (int)$_product->get_width();
-                            $height = (int)$_product->get_height();
-                            $length = (int)$_product->get_length();
-                            $entry['dim1'] = (int)$entry['dim1'] + (int)$length;
-                            $entry['dim2'] = (int)$entry['dim2'] + (int)$width;
-                            $entry['dim3'] = (int)$entry['dim3'] + (int)$height;
-                        } else {
-                            $entry['dim1'] = (int)$entry['dim1'] + 1;
-                            $entry['dim2'] = (int)$entry['dim2'] + 1;
-                            $entry['dim3'] = (int)$entry['dim3'] + 1;
-                        }
-                        $weight = (float)$_product->get_weight();
-                        if ($_product->has_weight() && $weight > 0) {
-                            $entry['actmass'] = (int)$entry['actmass'] + ((float)$weight * (int)$entry['pieces']);
-                        } else {
-                            $entry['actmass'] = (int)$entry['actmass'] + (1 * (int)$entry['pieces']);
-                        }
-                        if ($entry['actmass'] <= 0) {
-                            $entry['actmass'] = 1;
-                        }
-                        $result[($k - 1)] = $entry;
+
+            $itemsCount = $values['quantity'];
+            if ( $productQuantityPerParcel > 1 ) {
+                // Parcels based on product config
+                $productParcelLength = (int) get_post_meta( $values['product_id'], 'product_length_per_parcel', true );
+                $productParcelWidth  = (int) get_post_meta( $values['product_id'], 'product_width_per_parcel', true );
+                $productParcelHeight = (int) get_post_meta( $values['product_id'], 'product_height_per_parcel', true );
+                if ( $productParcelLength > 0 && $productParcelWidth > 0 && $productParcelHeight > 0 ) {
+                    $productParcelDim[0] = $productParcelLength;
+                    $productParcelDim[1] = $productParcelWidth;
+                    $productParcelDim[2] = $productParcelHeight;
+                    sort( $productParcelDim );
+                }
+
+                while ( $itemsCount >= 0 ) {
+                    $j ++;
+                    $parcelCount     = min( $itemsCount, $maxProductQuantityPerParcel );
+                    $product         = new WC_Product( $values['product_id'] );
+                    $prod            = get_post( $values['product_id'] );
+                    $slug            = $prod->post_title;
+                    $entry['item']   = $j;
+                    $entry['desc']   = $slug;
+                    $entry['pieces'] = 1;
+                    if ( isset( $productParcelDim ) ) {
+                        $entry['dim1'] = $productParcelDim[0];
+                        $entry['dim2'] = $productParcelDim[1];
+                        $entry['dim3'] = $productParcelDim[2];
                     } else {
-                        $entry = [];
-                        $entry['item'] = $k;
-                        $entry['desc'] = $slug;
-                        $entry['pieces'] = (int)$values['quantity'];
-                        if ($_product->has_dimensions()) {
-                            $width = (int)$_product->get_width();
-                            $height = (int)$_product->get_height();
-                            $length = (int)$_product->get_length();
-                            $entry['dim1'] = (int)$length;
-                            $entry['dim2'] = (int)$width;
-                            $entry['dim3'] = (int)$height;
+                        $factors = $this->factorise( $maxProductQuantityPerParcel );
+                        if ( $product->has_dimensions() ) {
+                            $dim[0] = (int) $product->get_width();
+                            $dim[1] = (int) $product->get_height();
+                            $dim[2] = (int) $product->get_length();
+                            sort( $dim );
+                            $entry['dim1'] = $dim[0] * $factors[2];
+                            $entry['dim2'] = $dim[1] * $factors[1];
+                            $entry['dim3'] = $dim[2] * $factors[0];
                         } else {
-                            $entry['dim1'] = 1; //Centimeters
+                            $entry['dim1'] = 1;
                             $entry['dim2'] = 1;
                             $entry['dim3'] = 1;
                         }
-                        $weight = (float)$_product->get_weight();
-                        if ($_product->has_weight() && $weight > 0) {
-                            $entry['actmass'] = (float)$weight * (int)$entry['pieces'];
-                        } else {
-                            $entry['actmass'] = 1 * (int)$entry['pieces'];
-                        }
-                        if ($entry['actmass'] <= 0) {
-                            $entry['actmass'] = 1;
-                        }
-                        $result[$k] = $entry;
-                        ++$k;
                     }
-                    if ($i == $productQuantityPerParcel) {
-                        $i = 1;
+
+                    if ( $product->has_weight() ) {
+                        $entry['actmass'] = $parcelCount * $product->get_weight();
                     } else {
-                        ++$i;
+                        $entry['actmass'] = 1.0;
                     }
+                    $r1[]       = $entry;
+                    $itemsCount -= $maxProductQuantityPerParcel;
                 }
-                foreach ($result as $index => $quoteParamsContentItem) {
-                    $quoteParamsContentItem['pieces'] = ceil($quoteParamsContentItem['pieces'] / $productQuantityPerParcel);
-                    $result[$index] = $quoteParamsContentItem;
+            } elseif ( $globalParcelItems > 1 ) {
+                // Parcels based on global config
+                while ( $itemsCount >= 0 ) {
+                    $j ++;
+                    $parcelCount     = min( $itemsCount, $globalParcelItems );
+                    $product         = new WC_Product( $values['product_id'] );
+                    $prod            = get_post( $values['product_id'] );
+                    $slug            = $prod->post_title;
+                    $entry['item']   = $j;
+                    $entry['desc']   = $slug;
+                    $entry['pieces'] = 1;
+                    if ( isset( $globalParcelDim ) ) {
+                        $entry['dim1'] = $globalParcelDim[0];
+                        $entry['dim2'] = $globalParcelDim[1];
+                        $entry['dim3'] = $globalParcelDim[2];
+                    } else {
+                        $factors = $this->factorise( $globalParcelItems );
+                        if ( $product->has_dimensions() ) {
+                            $dim[0] = (int) $product->get_width();
+                            $dim[1] = (int) $product->get_height();
+                            $dim[2] = (int) $product->get_length();
+                            sort( $dim );
+                            $entry['dim1'] = $dim[0] * $factors[2];
+                            $entry['dim2'] = $dim[1] * $factors[1];
+                            $entry['dim3'] = $dim[2] * $factors[0];
+                        } else {
+                            $entry['dim1'] = 1;
+                            $entry['dim2'] = 1;
+                            $entry['dim3'] = 1;
+                        }
+                    }
+
+                    if ( $product->has_weight() ) {
+                        $entry['actmass'] = $parcelCount * $product->get_weight();
+                    } else {
+                        $entry['actmass'] = 1.0;
+                    }
+                    $r1[]       = $entry;
+                    $itemsCount -= $globalParcelItems;
                 }
+            } else {
+                // Only single items - no parcels
+                $j ++;
+                $product         = new WC_Product( $values['product_id'] );
+                $prod            = get_post( $values['product_id'] );
+                $slug            = $prod->post_title;
+                $entry['item']   = $j;
+                $entry['desc']   = $slug;
+                $entry['pieces'] = $itemsCount;
+                if ( $product->has_dimensions() ) {
+                    $entry['dim1'] = (int) $product->get_width();
+                    $entry['dim2'] = (int) $product->get_height();
+                    $entry['dim3'] = (int) $product->get_length();
+                    sort( $dim );
+                } else {
+                    $entry['dim1'] = 1;
+                    $entry['dim2'] = 1;
+                    $entry['dim3'] = 1;
+                }
+                if ( $product->has_weight() ) {
+                    $entry['actmass'] = $itemsCount * $product->get_weight();
+                } else {
+                    $entry['actmass'] = 1.0;
+                }
+                $r1[] = $entry;
             }
-            $result = array_values($result);
+            $k ++;
         }
-        return $result;
+
+        return array_values( $r1 );
     }
 
     /**

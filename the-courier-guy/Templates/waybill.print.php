@@ -270,7 +270,7 @@ for ($i = 0; $i < $numberOfCopies; ++$i) {
                         <td class="red">OFFICE REFERENCE</td>
                     </tr>
                     <tr>
-                        <td class="black">N/A</td>
+                        <td class="black"><?php echo $order->get_order_key(); ?></td>
                     </tr>
                 </table>
             </td>

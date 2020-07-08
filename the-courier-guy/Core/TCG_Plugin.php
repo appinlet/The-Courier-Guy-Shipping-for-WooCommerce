@@ -3,7 +3,7 @@ Dompdf\Autoloader::register();
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
-Use Picqer\Barcode\BarcodeGeneratorPNG;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 /**
  * @author The Courier Guy
@@ -72,23 +72,12 @@ class TCG_Plugin extends CustomPlugin
         update_post_meta($orderId, '_shipping_place', $placeLabel);
         update_post_meta($orderId, '_shipping_area', $placeId);
         update_post_meta($orderId, '_shipping_place', $placeLabel);
-        $this->clearShippingCustomProperties();
-    }
 
-    /**
-     *
-     */
-    private function clearShippingCustomProperties()
-    {
-        if (is_user_logged_in()) {
-            $customer = WC()->customer;
-            update_user_meta($customer->get_id(), 'tcg_place_id', sanitize_text_field(''));
-            update_user_meta($customer->get_id(), 'tcg_place_label', sanitize_text_field(''));
-            update_user_meta($customer->get_id(), 'tcg_insurance', sanitize_text_field(''));
+        if ( isset($_SESSION['cachedQuoteResponse']) && $_SESSION['cachedQuoteResponse'] != '' ) {
+            $quoteno = json_decode($_SESSION['cachedQuoteResponse'])[0]->quoteno;
+            update_post_meta($orderId, '_shipping_quote', $quoteno);
         }
-        $_SESSION['tcg_place_id'] = sanitize_text_field('');
-        $_SESSION['tcg_place_label'] = sanitize_text_field('');
-        $_SESSION['tcg_insurance'] = sanitize_text_field('');
+        $this->clearShippingCustomProperties();
     }
 
     /**
@@ -110,53 +99,51 @@ class TCG_Plugin extends CustomPlugin
             'tcg_place_label' => sanitize_text_field($parameters[$addressPrefix . 'tcg_place_lookup_place_label']),
             'tcg_insurance' => $insurance,
         ];
-        $this->setShippingCustomProperties($customProperties);
-    }
 
-    /**
-     * @param array $customProperties
-     */
-    private function setShippingCustomProperties($customProperties)
-    {
-        if (is_user_logged_in()) {
-            $customer = WC()->customer;
-            update_user_meta($customer->get_id(), 'tcg_place_id', sanitize_text_field($customProperties['tcg_place_id']));
-            update_user_meta($customer->get_id(), 'tcg_place_label', sanitize_text_field($customProperties['tcg_place_label']));
-            update_user_meta($customer->get_id(), 'tcg_insurance', sanitize_text_field($customProperties['tcg_insurance']));
-        } else {
-            $_SESSION['tcg_place_id'] = sanitize_text_field($customProperties['tcg_place_id']);
-            $_SESSION['tcg_place_label'] = sanitize_text_field($customProperties['tcg_place_label']);
-            $_SESSION['tcg_insurance'] = sanitize_text_field($customProperties['tcg_insurance']);
+        if ( isset($_SESSION['cachedQuoteResponse']) ) {
+            $customProperties['tcg_quoteno'] = json_decode($_SESSION['cachedQuoteResponse'])[0]->quoteno;
         }
+
+        $this->setShippingCustomProperties($customProperties);
     }
 
     /**
      * @return array
      */
-    public function getShippingCustomProperties()
+    public function getShippingCustomProperties( $order = null )
     {
         $result = [];
-        if (is_user_logged_in()) {
+        if ( isset ($order) ) {
+            $result['tcg_place_id']    = get_user_meta($order->get_customer_id(), 'tcg_place_id', true);
+            $result['tcg_place_label'] = get_user_meta($order->get_customer_id(), 'tcg_place_label', true);
+            $result['tcg_insurance']   = get_user_meta($order->get_customer_id(), 'tcg_insurance', true);
+            $result['tcg_quoteno']     = get_user_meta($order->get_customer_id(), 'tcg_quoteno', true);
+        } elseif ( is_user_logged_in() ) {
             $customer = WC()->customer;
             $result['tcg_place_id'] = get_user_meta($customer->get_id(), 'tcg_place_id', true);
             $result['tcg_place_label'] = get_user_meta($customer->get_id(), 'tcg_place_label', true);
             $result['tcg_insurance'] = get_user_meta($customer->get_id(), 'tcg_insurance', true);
+            $result['tcg_quoteno']     = get_user_meta($customer->get_id(), 'tcg_quoteno', true);
         } else {
             $result['tcg_place_id'] = $_SESSION['tcg_place_id'];
             $result['tcg_place_label'] = $_SESSION['tcg_place_label'];
             $result['tcg_insurance'] = $_SESSION['tcg_insurance'];
+            $result['tcg_quoteno']     = $_SESSION['tcg_quoteno'];
         }
+
         return $result;
     }
 
     /**
      * @param array $keys
+     *
      * @return mixed
      */
     public function addExtraEmailFields($keys)
     {
         //@todo This naming of this post meta data is legacy from an older version of the plugin.
         $keys['Waybill'] = 'dawpro_waybill';
+
         return $keys;
     }
 
@@ -180,6 +167,7 @@ class TCG_Plugin extends CustomPlugin
 
     /**
      * @param array $adminShippingFields
+     *
      * @return array
      */
     public function addShippingMetaToOrder($adminShippingFields = [])
@@ -209,6 +197,7 @@ class TCG_Plugin extends CustomPlugin
                 ]
             ]
         ];
+
         return array_merge($adminShippingFields, $tcgAdminShippingFields);
     }
 
@@ -232,6 +221,11 @@ class TCG_Plugin extends CustomPlugin
             $order = wc_get_order($orderId);
             //@todo This naming of this post meta data is legacy from an older version of the plugin.
             $waybillNumber = get_post_meta($order->get_id(), 'dawpro_waybill', true);
+            $pdfFilePath   = $uploadsDirectory . '/' . $waybillNumber . '.pdf';
+
+            if ( file_exists($pdfFilePath) ) {
+                $this->sendPdf($pdfFilePath);
+            } else {
             $barcodePath = $this->getBarcodeImagePath($waybillNumber);
             $parcelPerfectApiPayload = $this->getParcelPerfectApiPayload();
             $shippingItems = $order->get_items('shipping');
@@ -244,9 +238,315 @@ class TCG_Plugin extends CustomPlugin
                 $collectionParams = $parcelPerfectApiPayload->getCollectionPayload($order, $shippingItem, $parameters);
                 $printWaybillMarkup = $printWaybillMarkup . $this->getPrintWaybillMarkup($order, $collectionParams, $parameters, $waybillNumber, $barcodePath);
             });
-            $pdfFilePath = $uploadsDirectory . '/' . $waybillNumber . '.pdf';
             $this->generatePdf($pdfFilePath, $printWaybillMarkup, $pdfPageSize);
             $this->sendPdf($pdfFilePath);
+        }
+    }
+    }
+
+    /**
+     * @param array $actions
+     *
+     * @return mixed
+     */
+    public function addPrintWayBillActionToOrderMetaBox( $actions )
+    {
+        $orderId           = sanitize_text_field($_GET['post']);
+        $order             = wc_get_order($orderId);
+        $hasShippingMethod = $this->hasTcgShippingMethod($order);
+        if ( $hasShippingMethod ) {
+            $actions['tcg_print_waybill'] = __('Print Waybill', 'woocommerce');
+        }
+
+        return $actions;
+    }
+
+    /**
+     * @param array $actions
+     *
+     * @return mixed
+     */
+    public function addSendCollectionActionToOrderMetaBox( $actions )
+    {
+        $orderId           = sanitize_text_field($_GET['post']);
+        $order             = wc_get_order($orderId);
+        $hasShippingMethod = $this->hasTcgShippingMethod($order);
+        if ( $hasShippingMethod ) {
+            $actions['tcg_send_collection'] = __('Send Order to Courier Guy', 'woocommerce');
+        }
+
+        return $actions;
+    }
+
+    /**
+     * @param $field
+     * @param $key
+     * @param $args
+     * @param $value
+     *
+     * @return string
+     */
+    public function getSuburbFormFieldMarkUp( $field, $key, $args, $value )
+    {
+        //@todo The contents of this method is legacy code from an older version of the plugin.
+        if ( $args['required'] ) {
+            $args['class'][] = 'validate-required';
+            $required        = ' <abbr class="required" title="' . esc_attr__('required', 'woocommerce') . '">*</abbr>';
+        } else {
+            $required = '';
+        }
+        $options                  = $field = '';
+        $label_id                 = $args['id'];
+        $sort                     = $args['priority'] ? $args['priority'] : '';
+        $field_container          = '<p class="form-row %1$s" id="%2$s" data-sort="' . esc_attr($sort) . '">%3$s</p>';
+        $customShippingProperties = $this->getShippingCustomProperties();
+        $option_key               = $customShippingProperties['tcg_place_id'];
+        $option_text              = $customShippingProperties['tcg_place_label'];
+        $options                  .= '<option value="' . esc_attr($option_key) . '" ' . selected($value, $option_key, false) . '>' . esc_attr($option_text) . '</option>';
+        $field                    .= '<input type="hidden" name="' . esc_attr($key) . '_place_id" value="' . $option_key . '"/>';
+        $field                    .= '<input type="hidden" name="' . esc_attr($key) . '_place_label" value="' . $option_text . '"/>';
+        $field                    .= '<select id="' . esc_attr($args['id']) . '" name="' . esc_attr($args['id']) . '" class="select ' . esc_attr(implode(' ', $args['input_class'])) . '" ' . ' data-placeholder="' . esc_attr($args['placeholder']) . '">
+							' . $options . '
+						</select>';
+        if ( ! empty($field) ) {
+            $field_html = '';
+            if ( $args['label'] && 'checkbox' != $args['type'] ) {
+                $field_html .= '<label for="' . esc_attr($label_id) . '" class="' . esc_attr(implode(' ', $args['label_class'])) . '">' . $args['label'] . $required . '</label>';
+            }
+            $field_html .= $field;
+            if ( $args['description'] ) {
+                $field_html .= '<span class="description">' . esc_html($args['description']) . '</span>';
+            }
+            $container_class = esc_attr(implode(' ', $args['class']));
+            $container_id    = esc_attr($args['id']) . '_field';
+            $field           = sprintf($field_container, $container_class, $container_id, $field_html);
+        }
+
+        return $field;
+    }
+
+    /**
+     * @param array $fields
+     *
+     * @return array
+     */
+    public function overrideAddressFields( $fields )
+    {
+        $fields = $this->addAddressFields('billing', $fields);
+        $fields = $this->addAddressFields('shipping', $fields);
+
+        return $fields;
+    }
+
+    /**
+     *
+     */
+    public function removeCachedShippingPackages()
+    {
+        //@todo The contents of this method is legacy code from an older version of the plugin.
+        $packages = WC()->cart->get_shipping_packages();
+        foreach ( $packages as $key => $value ) {
+            $shipping_session = "shipping_for_package_$key";
+            unset(WC()->session->$shipping_session);
+        }
+    }
+
+    /**
+     *
+     */
+    public function getSuburbs()
+    {
+        //@todo The contents of this method is legacy code from an older version of the plugin.
+        $term        = sanitize_text_field($_GET['q']['term']);
+        $dp_areas    = [];
+        $payloadData = [
+            'name' => $term,
+        ];
+        $d           = $this->getPlacesByName($payloadData);
+        foreach ( $d as $result ) {
+            $suggestion = [
+                'suburb_value' => $result['town'],
+                'suburb_key'   => $result['place']
+            ];
+            $dp_areas[] = $suggestion;
+        }
+        echo json_encode($dp_areas);
+        exit;
+    }
+
+    /**
+     *
+     */
+    public function localizeJSVariables()
+    {
+        //@todo The contents of this method is legacy code from an older version of the plugin, however slightly refactored.
+        $southAfricaOnly        = false;
+        $shippingMethodSettings = $this->getShippingMethodSettings();
+        if ( ! empty($shippingMethodSettings) && ! empty($shippingMethodSettings['south_africa_only']) && $shippingMethodSettings['south_africa_only'] == 'yes' ) {
+            $southAfricaOnly = true;
+        }
+        $translation_array = [
+            'url'             => get_admin_url(null, 'admin-ajax.php'),
+            'southAfricaOnly' => ( $southAfricaOnly ) ? 'true' : 'false',
+        ];
+        wp_localize_script($this->getPluginTextDomain() . '-main.js', 'theCourierGuy', $translation_array);
+    }
+
+    /**
+     *
+     */
+    public function registerJavascriptResources()
+    {
+        $this->registerJavascriptResource('main.js', [ 'jquery' ]);
+    }
+
+    /**
+     *
+     */
+    public function registerCSSResources()
+    {
+        $this->registerCSSResource('main.css');
+    }
+
+    /**
+     *
+     */
+    public function addSuburbSelectToCart()
+    {
+        $customShippingProperties = $this->getShippingCustomProperties();
+        $placeId                  = $customShippingProperties['tcg_place_id'];
+        $placeLabel               = $customShippingProperties['tcg_place_label'];
+        $options                  = [
+            $placeId => $placeLabel
+        ];
+        ob_start();
+        ?>
+        <p class="form-row form-row-wide validate-required tcg-suburb-field" style="display: none;"
+           id="tcg-cart-shipping-area-panel">
+            <input type="hidden" name="tcg_place_id"/>
+            <input type="hidden" name="tcg_place_label"/>
+            <select class="select form-row-wide" style="width:100%;">
+                <?php foreach ( (array) $options as $option_key => $option_value ) : ?>
+                    <option value="<?php echo esc_attr($option_key); ?>" <?php selected($option_key, esc_attr('4509')); ?>><?php echo esc_attr($option_value); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </p>
+        <?php
+        echo ob_get_clean();
+    }
+
+    /**
+     *
+     */
+    public function saveSuburbSelectFromCart()
+    {
+        if ( ! empty($_POST['tcg_place_id']) && ! empty($_POST['tcg_place_label']) && ! empty($_POST['woocommerce-shipping-calculator-nonce']) && wp_verify_nonce($_POST['woocommerce-shipping-calculator-nonce'], 'woocommerce-shipping-calculator') ) {
+            $customProperties = [
+                'tcg_place_id'    => sanitize_text_field($_POST['tcg_place_id']),
+                'tcg_place_label' => sanitize_text_field($_POST['tcg_place_label']),
+            ];
+            $this->setShippingCustomProperties($customProperties);
+            $this->removeCachedShippingPackages();
+        }
+    }
+
+    /**
+     * @param array $package
+     * @param array $parameters
+     *
+     * @return array|mixed|object
+     */
+    public function getQuote( $package, $parameters )
+    {
+        $result                  = [];
+        $parcelPerfectApiPayload = $this->getParcelPerfectApiPayload();
+        $quoteParams             = $parcelPerfectApiPayload->getQuotePayload($package, $parameters);
+        $payloadData             = apply_filters('thecourierguy_before_request_quote', $quoteParams, $package);
+        if ( ! empty($payloadData) && ! empty($payloadData['details']) && ! empty($payloadData['details']['origplace']) && ! empty($payloadData['details']['origtown']) && ! empty($payloadData['details']['destplace']) && ! empty($payloadData['details']['desttown']) ) {
+            if ( ! $this->compareCachedQuoteRequest($payloadData) ) {
+                $parcelPerfectApi = $this->getParcelPerfectApi();
+                $result           = $parcelPerfectApi->getQuote($payloadData);
+                if ( ! empty($result) ) {
+                    $this->updateCachedQuoteRequest($payloadData);
+                    $this->updateCachedQuoteResponse($result);
+                }
+            } else {
+                $result = json_decode($this->getCachedQuoteResponse(), true);
+            }
+        } else {
+            $this->clearCachedQuote();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param string $quoteNumber
+     */
+    public function setService( $quoteNumber )
+    {
+        if ( ! empty($quoteNumber) ) {
+            $parcelPerfectApi = $this->getParcelPerfectApi();
+            $chosenMethod     = WC()->session->get('chosen_shipping_methods');
+            if ( ! empty($chosenMethod) && ! empty($chosenMethod[0]) ) {
+                $serviceType = $chosenMethod[0];
+                if ( ! empty($serviceType) ) {
+                    $methodParts = explode(':', $serviceType);
+                    if ( ! empty($methodParts) && ! empty($methodParts[0]) && ! empty($methodParts[1]) && $methodParts[0] == 'the_courier_guy' ) {
+                        $service = $methodParts[1];
+                        if ( ! empty($service) ) {
+                            $payloadData = [
+                                'quoteno' => $quoteNumber,
+                                'service' => $service,
+                            ];
+                            $parcelPerfectApi->setService($payloadData);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     *
+     */
+    protected function registerModel()
+    {
+        require_once( $this->getPluginPath() . 'Model/Product.php' );
+    }
+
+    /**
+     *
+     */
+    private function clearShippingCustomProperties()
+    {
+        if ( is_user_logged_in() ) {
+            $customer = WC()->customer;
+            update_user_meta($customer->get_id(), 'tcg_place_id', sanitize_text_field(''));
+            update_user_meta($customer->get_id(), 'tcg_place_label', sanitize_text_field(''));
+            update_user_meta($customer->get_id(), 'tcg_insurance', sanitize_text_field(''));
+        }
+        $_SESSION['tcg_place_id']    = sanitize_text_field('');
+        $_SESSION['tcg_place_label'] = sanitize_text_field('');
+        $_SESSION['tcg_insurance']   = sanitize_text_field('');
+    }
+
+    /**
+     * @param array $customProperties
+     */
+    private function setShippingCustomProperties( $customProperties )
+    {
+        if ( is_user_logged_in() ) {
+            $customer = WC()->customer;
+            update_user_meta($customer->get_id(), 'tcg_place_id', sanitize_text_field($customProperties['tcg_place_id']));
+            update_user_meta($customer->get_id(), 'tcg_place_label', sanitize_text_field($customProperties['tcg_place_label']));
+            update_user_meta($customer->get_id(), 'tcg_insurance', sanitize_text_field($customProperties['tcg_insurance']));
+            update_user_meta($customer->get_id(), 'tcg_quoteno', sanitize_text_field($customProperties['tcg_quoteno']));
+        } else {
+            $_SESSION['tcg_place_id']    = sanitize_text_field($customProperties['tcg_place_id']);
+            $_SESSION['tcg_place_label'] = sanitize_text_field($customProperties['tcg_place_label']);
+            $_SESSION['tcg_insurance']   = sanitize_text_field($customProperties['tcg_insurance']);
+            $_SESSION['tcg_quote']       = sanitize_text_field($customProperties['tcg_quote']);
         }
     }
 
@@ -285,6 +585,7 @@ class TCG_Plugin extends CustomPlugin
      * @param array $shippingSettings
      * @param string $waybillNumber
      * @param string $barcodePath
+     *
      * @return string
      */
     private function getPrintWaybillMarkup($order, $collectionParams, $shippingSettings, $waybillNumber, $barcodePath)
@@ -294,6 +595,7 @@ class TCG_Plugin extends CustomPlugin
         include($printWaybillTemplateFile);
         $result = ob_get_clean();
         ob_end_clean();
+
         return $result;
     }
 
@@ -306,11 +608,13 @@ class TCG_Plugin extends CustomPlugin
         if (!file_exists($result)) {
             $result = $this->getPluginPath() . '/Templates/waybill.print.php';
         }
+
         return $result;
     }
 
     /**
      * @param string $barcodeNumber
+     *
      * @return string
      */
     private function getBarcodeImagePath($barcodeNumber)
@@ -324,36 +628,6 @@ class TCG_Plugin extends CustomPlugin
             $result = $uploadsDirectory . '/' . $fileName;
         }
         return $result;
-    }
-
-    /**
-     * @param array $actions
-     * @return mixed
-     */
-    public function addPrintWayBillActionToOrderMetaBox($actions)
-    {
-        $orderId = sanitize_text_field($_GET['post']);
-        $order = wc_get_order($orderId);
-        $hasShippingMethod = $this->hasTcgShippingMethod($order);
-        if ($hasShippingMethod) {
-            $actions['tcg_print_waybill'] = __('Print Waybill', 'woocommerce');
-        }
-        return $actions;
-    }
-
-    /**
-     * @param array $actions
-     * @return mixed
-     */
-    public function addSendCollectionActionToOrderMetaBox($actions)
-    {
-        $orderId = sanitize_text_field($_GET['post']);
-        $order = wc_get_order($orderId);
-        $hasShippingMethod = $this->hasTcgShippingMethod($order);
-        if ($hasShippingMethod) {
-            $actions['tcg_send_collection'] = __('Send Order to Courier Guy', 'woocommerce');
-        }
-        return $actions;
     }
 
     private function getShippingMethodSettings()
@@ -375,54 +649,10 @@ class TCG_Plugin extends CustomPlugin
     }
 
     /**
-     * @param $field
-     * @param $key
-     * @param $args
-     * @param $value
-     * @return string
-     */
-    public function getSuburbFormFieldMarkUp($field, $key, $args, $value)
-    {
-        //@todo The contents of this method is legacy code from an older version of the plugin.
-        if ($args['required']) {
-            $args['class'][] = 'validate-required';
-            $required = ' <abbr class="required" title="' . esc_attr__('required', 'woocommerce') . '">*</abbr>';
-        } else {
-            $required = '';
-        }
-        $options = $field = '';
-        $label_id = $args['id'];
-        $sort = $args['priority'] ? $args['priority'] : '';
-        $field_container = '<p class="form-row %1$s" id="%2$s" data-sort="' . esc_attr($sort) . '">%3$s</p>';
-        $customShippingProperties = $this->getShippingCustomProperties();
-        $option_key = $customShippingProperties['tcg_place_id'];
-        $option_text = $customShippingProperties['tcg_place_label'];
-        $options .= '<option value="' . esc_attr($option_key) . '" ' . selected($value, $option_key, false) . '>' . esc_attr($option_text) . '</option>';
-        $field .= '<input type="hidden" name="' . esc_attr($key) . '_place_id" value="' . $option_key . '"/>';
-        $field .= '<input type="hidden" name="' . esc_attr($key) . '_place_label" value="' . $option_text . '"/>';
-        $field .= '<select id="' . esc_attr($args['id']) . '" name="' . esc_attr($args['id']) . '" class="select ' . esc_attr(implode(' ', $args['input_class'])) . '" ' . ' data-placeholder="' . esc_attr($args['placeholder']) . '">
-							' . $options . '
-						</select>';
-        if (!empty($field)) {
-            $field_html = '';
-            if ($args['label'] && 'checkbox' != $args['type']) {
-                $field_html .= '<label for="' . esc_attr($label_id) . '" class="' . esc_attr(implode(' ', $args['label_class'])) . '">' . $args['label'] . $required . '</label>';
-            }
-            $field_html .= $field;
-            if ($args['description']) {
-                $field_html .= '<span class="description">' . esc_html($args['description']) . '</span>';
-            }
-            $container_class = esc_attr(implode(' ', $args['class']));
-            $container_id = esc_attr($args['id']) . '_field';
-            $field = sprintf($field_container, $container_class, $container_id, $field_html);
-        }
-        return $field;
-    }
-
-    /**
      * @param array $source
      * @param array $target
      * @param string $positionIndex
+     *
      * @return array
      */
     private function insertValueAfterPosition($source, $target, $positionIndex)
@@ -439,45 +669,38 @@ class TCG_Plugin extends CustomPlugin
         return $result;
     }
 
-    /**
-     * @param array $fields
-     * @return array
-     */
-    public function overrideAddressFields($fields)
+    private function getSurburbLabel()
     {
-        $fields = $this->addAddressFields('billing', $fields);
-        $fields = $this->addAddressFields('shipping', $fields);
-        return $fields;
-    }
-
-    private function getSurburbLabel(){
         $shippingMethodSettings = $this->getShippingMethodSettings();
         if (!empty($shippingMethodSettings)) {
             if(!empty($shippingMethodSettings['Suburb_title'])){
                 return $shippingMethodSettings['Suburb_title'];
-            }
-            else{
-                return 'Area / Suburb';   
+            } else {
+                return 'Area / Suburb';
             }
         }
-        return 'Area / Suburb'; 
+
+        return 'Area / Suburb';
     }
-    private function getSurburblocation(){
+
+    private function getSurburblocation()
+    {
         $shippingMethodSettings = $this->getShippingMethodSettings();
         if (!empty($shippingMethodSettings)) {
             if(!empty($shippingMethodSettings['Suburb_location'])){
                 return $shippingMethodSettings['Suburb_location'];
-            }
-            else{
-                return '_country';   
+            } else {
+                return '_country';
             }
         }
-        return '_country'; 
+
+        return '_country';
     }
 
     /**
      * @param string $addressType
      * @param array $fields
+     *
      * @return array
      */
     private function addAddressFields($addressType, $fields)
@@ -505,12 +728,19 @@ class TCG_Plugin extends CustomPlugin
                 'required' => true,
                 'class' => ['form-row-last'],
             ]
-        ]); 
+        ]);
         $addressFields[$addressType . '_insurance'] = [
             'type' => 'checkbox',
             'label' => 'Would you like to include Shipping Insurance',
             'required' => false,
             'class' => ['form-row-wide', 'tcg-insurance'],
+            'priority' => 90,
+        ];
+        $addressFields[ $addressType . '_tcg_quoteno' ] = [
+            'type'     => 'text',
+            'label'    => 'TCG Quote Number',
+            'required' => false,
+            'class'    => [ 'form-row-wide', 'tcg-quoteno' ],
             'priority' => 90,
         ];
         $legacyFieldProperties = [
@@ -521,118 +751,8 @@ class TCG_Plugin extends CustomPlugin
         $addressFields[$addressType . '_area'] = $legacyFieldProperties;
         $addressFields[$addressType . '_place'] = $legacyFieldProperties;
         $fields[$addressType] = $addressFields;
+
         return $fields;
-    }
-
-    /**
-     *
-     */
-    public function removeCachedShippingPackages()
-    {
-        //@todo The contents of this method is legacy code from an older version of the plugin.
-        $packages = WC()->cart->get_shipping_packages();
-        foreach ($packages as $key => $value) {
-            $shipping_session = "shipping_for_package_$key";
-            unset(WC()->session->$shipping_session);
-        }
-    }
-
-    /**
-     *
-     */
-    public function getSuburbs()
-    {
-        //@todo The contents of this method is legacy code from an older version of the plugin.
-        $term = sanitize_text_field($_GET['q']['term']);
-        $dp_areas = [];
-        $payloadData = [
-            'name' => $term,
-        ];
-        $d = $this->getPlacesByName($payloadData);
-        foreach ($d as $result) {
-            $suggestion = [
-                'suburb_value' => $result['town'],
-                'suburb_key' => $result['place']
-            ];
-            $dp_areas[] = $suggestion;
-        }
-        echo json_encode($dp_areas);
-        exit;
-    }
-
-    /**
-     *
-     */
-    public function localizeJSVariables()
-    {
-        //@todo The contents of this method is legacy code from an older version of the plugin, however slightly refactored.
-        $southAfricaOnly = false;
-        $shippingMethodSettings = $this->getShippingMethodSettings();
-        if (!empty($shippingMethodSettings) && !empty($shippingMethodSettings['south_africa_only']) && $shippingMethodSettings['south_africa_only'] == 'yes') {
-            $southAfricaOnly = true;
-        }
-        $translation_array = [
-            'url' => get_admin_url(null, 'admin-ajax.php'),
-            'southAfricaOnly' => ($southAfricaOnly) ? 'true' : 'false',
-        ];
-        wp_localize_script($this->getPluginTextDomain() . '-main.js', 'theCourierGuy', $translation_array);
-    }
-
-    /**
-     *
-     */
-    public function registerJavascriptResources()
-    {
-        $this->registerJavascriptResource('main.js', ['jquery']);
-    }
-
-    /**
-     *
-     */
-    public function registerCSSResources()
-    {
-        $this->registerCSSResource('main.css');
-    }
-
-    /**
-     *
-     */
-    public function addSuburbSelectToCart()
-    {
-        $customShippingProperties = $this->getShippingCustomProperties();
-        $placeId = $customShippingProperties['tcg_place_id'];
-        $placeLabel = $customShippingProperties['tcg_place_label'];
-        $options = [
-            $placeId => $placeLabel
-        ];
-        ob_start();
-        ?>
-        <p class="form-row form-row-wide validate-required tcg-suburb-field" style="display: none;" id="tcg-cart-shipping-area-panel">
-            <input type="hidden" name="tcg_place_id"/>
-            <input type="hidden" name="tcg_place_label"/>
-            <select class="select form-row-wide" style="width:100%;">
-                <?php foreach ((array)$options as $option_key => $option_value) : ?>
-                    <option value="<?php echo esc_attr($option_key); ?>" <?php selected($option_key, esc_attr('4509')); ?>><?php echo esc_attr($option_value); ?></option>
-                <?php endforeach; ?>
-            </select>
-        </p>
-        <?php
-        echo ob_get_clean();
-    }
-
-    /**
-     *
-     */
-    public function saveSuburbSelectFromCart()
-    {
-        if (!empty($_POST['tcg_place_id']) && !empty($_POST['tcg_place_label']) && !empty($_POST['woocommerce-shipping-calculator-nonce']) && wp_verify_nonce($_POST['woocommerce-shipping-calculator-nonce'], 'woocommerce-shipping-calculator')) {
-            $customProperties = [
-                'tcg_place_id' => sanitize_text_field($_POST['tcg_place_id']),
-                'tcg_place_label' => sanitize_text_field($_POST['tcg_place_label']),
-            ];
-            $this->setShippingCustomProperties($customProperties);
-            $this->removeCachedShippingPackages();
-        }
     }
 
     /**
@@ -716,19 +836,12 @@ class TCG_Plugin extends CustomPlugin
     /**
      *
      */
-    protected function registerModel()
-    {
-        require_once($this->getPluginPath() . 'Model/Product.php');
-    }
-
-    /**
-     *
-     */
     private function registerShippingMethod()
     {
         require_once($this->getPluginPath() . 'Shipping/TCG_ShippingMethod.php');
         add_filter('woocommerce_shipping_methods', function ($methods) {
             $methods['the_courier_guy'] = 'TCG_Shipping_Method';
+
             return $methods;
         });
     }
@@ -740,62 +853,8 @@ class TCG_Plugin extends CustomPlugin
     private function getPlacesByName($payloadData)
     {
         $parcelPerfectApi = $this->getParcelPerfectApi();
+
         return $parcelPerfectApi->getPlacesByName($payloadData);
-    }
-
-    /**
-     * @param array $package
-     * @param array $parameters
-     * @return array|mixed|object
-     */
-    public function getQuote($package, $parameters)
-    {
-        $result = [];
-        $parcelPerfectApiPayload = $this->getParcelPerfectApiPayload();
-        $quoteParams = $parcelPerfectApiPayload->getQuotePayload($package, $parameters);
-        $payloadData = apply_filters('thecourierguy_before_request_quote', $quoteParams, $package);
-        if (!empty($payloadData) && !empty($payloadData['details']) && !empty($payloadData['details']['origplace']) && !empty($payloadData['details']['origtown']) && !empty($payloadData['details']['destplace']) && !empty($payloadData['details']['desttown'])) {
-            if (!$this->compareCachedQuoteRequest($payloadData)) {
-                $parcelPerfectApi = $this->getParcelPerfectApi();
-                $result = $parcelPerfectApi->getQuote($payloadData);
-                if (!empty($result)) {
-                    $this->updateCachedQuoteRequest($payloadData);
-                    $this->updateCachedQuoteResponse($result);
-                }
-            } else {
-                $result = json_decode($this->getCachedQuoteResponse(), true);
-            }
-        } else {
-            $this->clearCachedQuote();
-        }
-        return $result;
-    }
-
-    /**
-     * @param string $quoteNumber
-     */
-    public function setService($quoteNumber)
-    {
-        if (!empty($quoteNumber)) {
-            $parcelPerfectApi = $this->getParcelPerfectApi();
-            $chosenMethod = WC()->session->get('chosen_shipping_methods');
-            if (!empty($chosenMethod) && !empty($chosenMethod[0])) {
-                $serviceType = $chosenMethod[0];
-                if (!empty($serviceType)) {
-                    $methodParts = explode(':', $serviceType);
-                    if (!empty($methodParts) && !empty($methodParts[0]) && !empty($methodParts[1]) && $methodParts[0] == 'the_courier_guy') {
-                        $service = $methodParts[1];
-                        if (!empty($service)) {
-                            $payloadData = [
-                                'quoteno' => $quoteNumber,
-                                'service' => $service,
-                            ];
-                            $parcelPerfectApi->setService($payloadData);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -804,23 +863,43 @@ class TCG_Plugin extends CustomPlugin
      */
     private function setCollection($order, $forceCollectionSending = false)
     {
-        $parcelPerfectApiPayload = $this->getParcelPerfectApiPayload();
+        $shippingCustomProperties = $this->getShippingCustomProperties($order);
         $parcelPerfectApi = $this->getParcelPerfectApi();
         $shippingItems = $order->get_items('shipping');
-        array_walk($shippingItems, function ($shippingItem) use ($parcelPerfectApi, $parcelPerfectApiPayload, $order, $forceCollectionSending) {
+        $quoteno                  = get_post_meta($order->get_id(), '_shipping_quote')[0];
+
+        $payloadData['quoteno']             = $quoteno;
+        $payloadData['quoteCollectionDate'] = ( new DateTime() )->add(new DateInterval('P1D'))->format('d.m.Y');
+        $payloadData['starttime']           = ( new DateTime() )->add(new DateInterval('PT1H'))->format('H:i:s');
+        $payloadData['endtime']             = '18:00:00';
+        $payloadData['printWaybill']        = 1;
+
+        array_walk($shippingItems, function ( $shippingItem ) use ( $parcelPerfectApi, $order, $forceCollectionSending, $payloadData ) {
             $shippingInstanceId = $shippingItem->get_meta('instance_id', true);
             $shippingInstanceMethod = $shippingItem->get_meta('method_id', true);
             if (strstr($shippingInstanceMethod, 'the_courier_guy')) {
                 $parameters = get_option('woocommerce_the_courier_guy_' . $shippingInstanceId . '_settings');
                 if ($forceCollectionSending || (!empty($parameters['automatically_submit_collection_order']) && $parameters['automatically_submit_collection_order'] == 'yes')) {
-                    $collectionParams = $parcelPerfectApiPayload->getCollectionPayload($order, $shippingItem, $parameters);
-                    $payloadData = apply_filters('thecourierguy_before_submit_collection', $collectionParams, $shippingItem);
                     $result = $parcelPerfectApi->setCollection($payloadData);
                     $this->updateOrderWaybill($order, $result[0]['waybillno']);
                     $this->updateOrderCollectionNumber($order, $result[0]['collectno']);
+                    $this->savePdfWaybill( $result[0]['waybillno'], $result[0]['waybillBase64']);
                 }
             }
         });
+    }
+
+    private function savePdfWaybill( $collectno, $base64 )
+    {
+        $uploadsDirectory = $this->getPluginUploadPath();
+        $pdfFilePath      = $uploadsDirectory . '/' . $collectno . '.pdf';
+        try {
+            $f = fopen($pdfFilePath, 'wb');
+            fwrite($f, base64_decode($base64));
+            fclose($f);
+        } catch ( Exception $e ) {
+
+        }
     }
 
     private function hasTcgShippingMethod($order)
@@ -835,6 +914,7 @@ class TCG_Plugin extends CustomPlugin
                 }
             });
         }
+
         return $result;
     }
 
@@ -903,6 +983,7 @@ class TCG_Plugin extends CustomPlugin
 
     /**
      * @param array $quoteParams
+     *
      * @return bool
      */
     private function compareCachedQuoteRequest($quoteParams)
@@ -916,6 +997,7 @@ class TCG_Plugin extends CustomPlugin
                 $result = true;
             }
         }
+
         return $result;
     }
 }

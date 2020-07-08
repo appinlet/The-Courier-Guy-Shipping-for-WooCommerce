@@ -154,7 +154,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     private function addRate($rate, $package, $percentageMarkup, $priceRateOverrides, $labelOverrides)
     {
-        
+
         $free_ship = $this->get_instance_option('free_shipping');
         $amount_for_free_shipping = $this->get_instance_option('amount_for_free_shipping');
         $rates_for_free_shipping = $this->get_instance_option('rates_for_free_shipping');
@@ -184,7 +184,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                     $totalPrice = 0;
                 }
             }
-            
+
             $shippingMethodId = 'the_courier_guy' . ':' . $rateService . ':' . $this->instance_id;
             $args = [
                 'id' => $shippingMethodId,
@@ -345,6 +345,27 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'placeholder' => '1',
                 'disclaimer_description' => 'I accept that altering the \'Product Quantity Per Parcel\' setting may cause quotes to be inaccurate and The Courier Guy will not be responsible for these inaccurate quotes.'
             ],
+            'product_length_per_parcel' => [
+                'title' => __('Length of Global Parcel', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Length of the global parcel', 'woocommerce'),
+                'default' => '',
+                'placeholder' => '1',
+            ],
+            'product_width_per_parcel' => [
+                'title' => __('Width of Global Parcel', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Width of the global parcel', 'woocommerce'),
+                'default' => '',
+                'placeholder' => '1',
+            ],
+            'product_height_per_parcel' => [
+                'title' => __('Height of Global Parcel', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Height of the global parcel', 'woocommerce'),
+                'default' => '',
+                'placeholder' => '1',
+            ],
             'order_waybill_pdf_paper_size' => [
                 'title' => __('Waybill PDF Paper Size', 'woocommerce'),
                 'type' => 'tcg_pdf_paper_size',
@@ -385,7 +406,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'custom_attributes' => [
                     'min' => '0'
                 ]
-                
+
             ],
             'Suburb_location' => [
                 'title' => __('Suburb location', 'woocommerce'),
@@ -400,10 +421,10 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'type' => 'text',
                 'description' => __('Enter the title for the Suburb field.', 'woocommerce').'<br />'.__('This custom Suburb Title will be displayed on the checkout form.', 'woocommerce'),
                 'default' => 'Area/Suburb',
-                
+
             ],
-            
-            
+
+
         ];
         $this->instance_form_fields = $fields;
     }
@@ -416,7 +437,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
         //@todo The contents of this method is legacy code from an older version of the plugin.
         return json_decode('{"AIR":"AIR: Airfreight","ECO":"ECO: Economy (Domestic Road Freight)","LLS":"LLS: Local Late Sameday","LOF":"LOF: Local Overnight Flyer","LOX":"LOX: Local Overnight Parcels","LSE":"LSE: Local Sameday Economy","LSF":"LSF: Local Sameday Flyer","LSX":"LSX: Local Sameday Express","OVN":"OVN: Overnight Courier","SDX":"SDX: Express Sameday"}');
     }
-     /**
+    /**
      *getSuburbLocationOptions() -> returns an array of locations from the checkout form
      * @return array|mixed|object
      */

@@ -1,0 +1,7 @@
+= 4.1.1 - Jul 08, 2020
+* Add conditional free shipping feature.
+* Add custom label and location for suburb area field.
+* Fix shipment notifications.
+* Fix parcel size, volume and weight calculations.
+* Add parcel dimension configuration at both global and product levels.
+* Add order number as WayBill reference.

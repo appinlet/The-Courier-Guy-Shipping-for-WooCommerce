@@ -124,6 +124,15 @@ Select a service to add or remove label override.
 
 **Product Quantity per Parcel**
 This will allow for a single parcel to be allotted per the configured 'Product Quantity per Parcel' value.
+It is a global setting applied to all products, but product parcel settings (where set) will take precedence
+over this setting.
+If this facility is not required, leave this field blank.
+
+**Product Dimensions per Parcel**
+Set the global parcel dimensions (length/width/height) if using the configuration above.
+These are global settings applied to all products, but product parcel settings (where set) will take precedence
+over these settings.
+If these are left blank a generic algorithm is used to calculate the parcel dimensions.
 
 **Waybill PDF Paper Size**
 This is the paper size used when generating Waybill print PDF.
@@ -144,5 +153,20 @@ Yes! A Courier Guy account is required. To open an account please refer to [The 
 = Where can I get support or talk to other users? =
 
 If you get stuck, you can ask for help in the Plugin Forum.
+
+*Parcel Configuration in Products*
+The section "The Courier Guy Settings" in a product configuration may be configured for parcels.
+This allows for several items of a product to be shipped as a parcel. Examples might be shirts or computer RAM,
+where from 1 to Product Quantity Per Parcel are shipped in a single parcel.
+If the "Product Quantity per Parcel" is left blank this feature is disabled and the global parcel settings will
+apply. Otherwise the positive value is used.
+As an example,if the Product Quantity per Parcel is 10, an order of 1, 5 or 10 items will ship in one parcel, while an order of
+14 items will ship in two parcels - one with 10 items and one with 4 items. In all cases the parcel size will be identical
+but the parcel weight will depend on the number of items inside.
+
+Parcel dimensions for a product specific parcel can be set here, and preferably should be if this feature is used.
+If the dimensions are not set (left blank), an algorithm is used to calculate the parcel size based on the allowed quantity
+and individual product dimensions.
+
 
 == Changelog ==
