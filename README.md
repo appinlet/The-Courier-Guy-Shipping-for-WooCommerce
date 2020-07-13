@@ -10,6 +10,7 @@ The Courier Guy extension for WooCommerce enables you to ship product using The 
 - Fix parcel size, volume and weight calculations.
 - Add parcel dimension configuration at both global and product levels.
 - Add order id as WayBill reference.
+- Add order notes for Parcel Perfect endpoint queries.
 
 ## Why Choose The Courier Guy?
 The Courier Guy has built a strong reputation through strong customer relations and effective personal service. Today The Courier Guy is trusted, recognized and the fastest growing courier company in South Africa.
