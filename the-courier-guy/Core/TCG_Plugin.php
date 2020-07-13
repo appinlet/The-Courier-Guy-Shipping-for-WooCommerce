@@ -62,7 +62,7 @@ class TCG_Plugin extends CustomPlugin
     public function updateTCGServiceOnOrder($orderId, $data)
     {
         $parcelPerfectApi = $this->getParcelPerfectApi();
-        $quoteno = get_post_meta( $orderId, '_shipping_quote');
+        $quoteno = get_post_meta( $orderId, '_shipping_quote')[0];
         $shippingMethod = get_post_meta( $orderId, '_shipping_method')[0];
         $service = explode(':', $shippingMethod)[1];
         $payload = [
@@ -91,10 +91,14 @@ class TCG_Plugin extends CustomPlugin
         update_post_meta($orderId, '_shipping_place', $placeLabel);
         update_post_meta($orderId, '_shipping_method', $data['shipping_method'][0]);
 
+        $order = new WC_Order( $orderId );
+
         if ( isset($_SESSION['cachedQuoteResponse']) && $_SESSION['cachedQuoteResponse'] != '' ) {
             $quoteno = json_decode($_SESSION['cachedQuoteResponse'])[0]->quoteno;
             update_post_meta($orderId, '_shipping_quote', $quoteno);
+            $order->add_order_note('Shipping on order: ' . json_encode($_SESSION['cachedQuoteResponse']));
         }
+        $order->add_order_note('Order shipping total on order: ' . $order->get_shipping_total());
         $this->clearShippingCustomProperties();
     }
 
@@ -911,6 +915,8 @@ class TCG_Plugin extends CustomPlugin
                 }
             }
         });
+
+        $this->clearCachedQuote();
     }
 
     private function savePdfWaybill( $collectno, $base64 )
