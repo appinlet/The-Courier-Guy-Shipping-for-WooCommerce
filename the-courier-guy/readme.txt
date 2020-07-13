@@ -124,15 +124,16 @@ Select a service to add or remove label override.
 
 **Product Quantity per Parcel**
 This will allow for a single parcel to be allotted per the configured 'Product Quantity per Parcel' value.
-It is a global setting applied to all products, but product parcel settings (where set) will take precedence
-over this setting.
+This will apply when more than one product type is included per order, or if there is only one product
+type in the order but its parcel is not configured.
 If this facility is not required, leave this field blank.
 
 **Product Dimensions per Parcel**
 Set the global parcel dimensions (length/width/height) if using the configuration above.
 These are global settings applied to all products, but product parcel settings (where set) will take precedence
 over these settings.
-If these are left blank a generic algorithm is used to calculate the parcel dimensions.
+These are required if the global parcel quantity is set. Dimensions will default to 50cm each for
+backward compatibility with earlier plugin versions where these could not be set.
 
 **Waybill PDF Paper Size**
 This is the paper size used when generating Waybill print PDF.

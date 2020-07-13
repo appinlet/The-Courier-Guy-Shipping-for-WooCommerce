@@ -197,6 +197,7 @@
         }
         if (typeof woocommerce_admin !== 'undefined') {
             woocommerce_admin['i18n_disclaimer_error'] = 'Please accept this disclaimer.';
+            woocommerce_admin['i18n_dimension_required'] = 'Please enter a dimension here';
 
             $(document.body).on('submit', '.woocommerce #mainform', function (event) {
                 var preventFormSubmission = false;
@@ -211,6 +212,23 @@
                         $(document.body).triggerHandler('wc_add_error_tip', [itemDisclaimerElement, 'i18n_disclaimer_error']);
                     }
                 });
+                var productQuantityPerParcelElement = parseInt(productQuantityPerParcelElements[0].value);
+                if (productQuantityPerParcelElement > 1) {
+                    var globalParcelDimensions = [];
+                    var globalParcelDimensionLength = $('input[name$="length_per_parcel"]');
+                    globalParcelDimensions.push(globalParcelDimensionLength);
+                    var globalParcelDimensionWidth = $('input[name$="width_per_parcel"]');
+                    globalParcelDimensions.push(globalParcelDimensionWidth);
+                    var globalParcelDimensionHeight = $('input[name$="height_per_parcel"]');
+                    globalParcelDimensions.push(globalParcelDimensionHeight);
+                    $.each(globalParcelDimensions, function (index, item) {
+                        if (!parseInt(item[0].value) > 0) {
+                            preventFormSubmission = true;
+                            item[0].value = 'This field is required';
+                            $(document.body).triggerHandler('wc_add_error_tip', [item, 'i18n_dimension_required']);
+                        }
+                    });
+                }
                 if (preventFormSubmission === true) {
                     event.preventDefault();
                 }

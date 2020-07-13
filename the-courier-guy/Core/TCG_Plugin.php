@@ -56,6 +56,23 @@ class TCG_Plugin extends CustomPlugin
         add_action('woocommerce_order_action_tcg_send_collection', [$this, 'setCollectionFromOrder'], 10, 1);
         add_action('woocommerce_order_status_processing', [$this, 'setCollectionOnOrderProcessing']);
         add_action('woocommerce_checkout_update_order_meta', [$this, 'updateShippingPropertiesOnOrder'], 10, 2);
+        add_action('woocommerce_checkout_update_order_meta', [$this, 'updateTCGServiceOnOrder'], 10, 2);
+    }
+
+    public function updateTCGServiceOnOrder($orderId, $data)
+    {
+        $parcelPerfectApi = $this->getParcelPerfectApi();
+        $quoteno = get_post_meta( $orderId, '_shipping_quote');
+        $shippingMethod = get_post_meta( $orderId, '_shipping_method')[0];
+        $service = explode(':', $shippingMethod)[1];
+        $payload = [
+            'quoteno' => $quoteno,
+            'service' => $service,
+            'reference' => $orderId,
+        ];
+
+        $parcelPerfectApi->setService($payload);
+
     }
 
     /**
@@ -72,6 +89,7 @@ class TCG_Plugin extends CustomPlugin
         update_post_meta($orderId, '_shipping_place', $placeLabel);
         update_post_meta($orderId, '_shipping_area', $placeId);
         update_post_meta($orderId, '_shipping_place', $placeLabel);
+        update_post_meta($orderId, '_shipping_method', $data['shipping_method'][0]);
 
         if ( isset($_SESSION['cachedQuoteResponse']) && $_SESSION['cachedQuoteResponse'] != '' ) {
             $quoteno = json_decode($_SESSION['cachedQuoteResponse'])[0]->quoteno;
@@ -485,6 +503,8 @@ class TCG_Plugin extends CustomPlugin
      */
     public function setService( $quoteNumber )
     {
+        global $wpdb;
+
         if ( ! empty($quoteNumber) ) {
             $parcelPerfectApi = $this->getParcelPerfectApi();
             $chosenMethod     = WC()->session->get('chosen_shipping_methods');
@@ -499,6 +519,10 @@ class TCG_Plugin extends CustomPlugin
                                 'quoteno' => $quoteNumber,
                                 'service' => $service,
                             ];
+
+                            $query = "select * from $wpdb->postmeta where meta_key = '_shipping_quote' and meta_value = %s";
+                            $orderId = $wpdb->get_results($wpdb->prepare($query, [$quoteNumber]))[0]->post_id;
+                            $payloadData['reference'] = $orderId;
                             $parcelPerfectApi->setService($payloadData);
                         }
                     }
