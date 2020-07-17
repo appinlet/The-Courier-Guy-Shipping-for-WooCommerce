@@ -18,6 +18,7 @@ class TCG_Plugin extends CustomPlugin
 
     /**
      * TCG_Plugin constructor.
+     *
      * @param $file
      */
     public function __construct($file)
@@ -31,21 +32,21 @@ class TCG_Plugin extends CustomPlugin
         $this->initializeParcelPerfectApiPayload();
         $this->registerShippingMethod();
 
-        add_action('wp_enqueue_scripts', [$this, 'registerJavascriptResources']);
-        add_action('wp_enqueue_scripts', [$this, 'registerCSSResources']);
-        add_action('wp_enqueue_scripts', [$this, 'localizeJSVariables']);
-        add_action('admin_enqueue_scripts', [$this, 'registerJavascriptResources']);
-        add_action('admin_enqueue_scripts', [$this, 'localizeJSVariables']);
-        add_action('login_enqueue_scripts', [$this, 'localizeJSVariables']);
-        add_action('wp_ajax_wc_tcg_get_places', [$this, 'getSuburbs']);
-        add_action('wp_ajax_nopriv_wc_tcg_get_places', [$this, 'getSuburbs']);
-        add_action('woocommerce_checkout_update_order_review', [$this, 'updateShippingPropertiesFromCheckout']);
-        add_action('woocommerce_checkout_update_order_review', [$this, 'removeCachedShippingPackages']);
-        add_filter('woocommerce_checkout_fields', [$this, 'overrideAddressFields'], 999, 1);
-        add_filter('woocommerce_form_field_tcg_place_lookup', [$this, 'getSuburbFormFieldMarkUp'], 1, 4);
-        add_filter('woocommerce_after_shipping_calculator', [$this, 'addSuburbSelectToCart'], 10, 1);
-        add_action('woocommerce_calculated_shipping', [$this, 'saveSuburbSelectFromCart']);
-        add_filter('woocommerce_email_order_meta_keys', [$this, 'addExtraEmailFields']);
+        add_action('wp_enqueue_scripts', [ $this, 'registerJavascriptResources' ]);
+        add_action('wp_enqueue_scripts', [ $this, 'registerCSSResources' ]);
+        add_action('wp_enqueue_scripts', [ $this, 'localizeJSVariables' ]);
+        add_action('admin_enqueue_scripts', [ $this, 'registerJavascriptResources' ]);
+        add_action('admin_enqueue_scripts', [ $this, 'localizeJSVariables' ]);
+        add_action('login_enqueue_scripts', [ $this, 'localizeJSVariables' ]);
+        add_action('wp_ajax_wc_tcg_get_places', [ $this, 'getSuburbs' ]);
+        add_action('wp_ajax_nopriv_wc_tcg_get_places', [ $this, 'getSuburbs' ]);
+        add_action('woocommerce_checkout_update_order_review', [ $this, 'updateShippingPropertiesFromCheckout' ]);
+        add_action('woocommerce_checkout_update_order_review', [ $this, 'removeCachedShippingPackages' ]);
+        add_filter('woocommerce_checkout_fields', [ $this, 'overrideAddressFields' ], 999, 1);
+        add_filter('woocommerce_form_field_tcg_place_lookup', [ $this, 'getSuburbFormFieldMarkUp' ], 1, 4);
+        add_filter('woocommerce_after_shipping_calculator', [ $this, 'addSuburbSelectToCart' ], 10, 1);
+        add_action('woocommerce_calculated_shipping', [ $this, 'saveSuburbSelectFromCart' ]);
+        add_filter('woocommerce_email_before_order_table', [ $this, 'addExtraEmailFields' ], 10, 3);
 
         add_action('woocommerce_order_actions', [$this, 'addSendCollectionActionToOrderMetaBox'], 10, 1);
         add_action('woocommerce_order_actions', [$this, 'addPrintWayBillActionToOrderMetaBox'], 10, 1);
@@ -56,18 +57,18 @@ class TCG_Plugin extends CustomPlugin
         add_action('woocommerce_order_action_tcg_send_collection', [$this, 'setCollectionFromOrder'], 10, 1);
         add_action('woocommerce_order_status_processing', [$this, 'setCollectionOnOrderProcessing']);
         add_action('woocommerce_checkout_update_order_meta', [$this, 'updateShippingPropertiesOnOrder'], 10, 2);
-        add_action('woocommerce_checkout_update_order_meta', [$this, 'updateTCGServiceOnOrder'], 10, 2);
+        add_action('woocommerce_checkout_update_order_meta', [ $this, 'updateTCGServiceOnOrder' ], 20, 2);
     }
 
     public function updateTCGServiceOnOrder($orderId, $data)
     {
         $parcelPerfectApi = $this->getParcelPerfectApi();
-        $quoteno = get_post_meta( $orderId, '_shipping_quote')[0];
-        $shippingMethod = get_post_meta( $orderId, '_shipping_method')[0];
-        $service = explode(':', $shippingMethod)[1];
-        $payload = [
-            'quoteno' => $quoteno,
-            'service' => $service,
+        $quoteno          = get_post_meta($orderId, '_shipping_quote')[0];
+        $shippingMethod   = get_post_meta($orderId, '_shipping_method')[0];
+        $service          = explode(':', $shippingMethod)[1];
+        $payload          = [
+            'quoteno'   => $quoteno,
+            'service'   => $service,
             'reference' => $orderId,
         ];
 
@@ -157,16 +158,29 @@ class TCG_Plugin extends CustomPlugin
     }
 
     /**
-     * @param array $keys
+     * @param $order
+     * @param $sent_to_admin
+     * @param $plain_text
      *
      * @return mixed
      */
-    public function addExtraEmailFields($keys)
+    public function addExtraEmailFields( $order, $sent_to_admin, $plain_text )
     {
-        //@todo This naming of this post meta data is legacy from an older version of the plugin.
-        $keys['Waybill'] = 'dawpro_waybill';
-
-        return $keys;
+        // Check to see if this is a TCG shipping method
+        if ( $this->hasTcgShippingMethod($order) ) {
+            global $wpdb;
+            $query   = "select meta_value from $wpdb->postmeta where post_id = %s and meta_key = 'dawpro_waybill'";
+            $waybill = $wpdb->get_results($wpdb->prepare($query, [ $order->get_id() ]));
+            if ( $waybill && count($waybill) > 0 ) {
+                $waybillNo = $waybill[0]->meta_value;
+            }
+            echo <<<HTML
+<br><br><span>Your Waybill: $waybillNo <a href="https://thecourierguy.pperfect.com/?w=$waybillNo">
+  Click me to track</a></span><br><br>
+HTML;
+        } else {
+            return;
+        }
     }
 
     /**
@@ -254,7 +268,7 @@ class TCG_Plugin extends CustomPlugin
             $printWaybillMarkup = '';
             $pdfPageSize = 'a4';
             array_walk($shippingItems, function ($shippingItem) use (&$printWaybillMarkup, $parcelPerfectApiPayload, $order, $waybillNumber, $barcodePath, &$pdfPageSize) {
-                $shippingInstanceId = $shippingItem->get_meta('instance_id', true);
+                    $shippingInstanceId = $shippingItem->get_instance_id();
                 $parameters = get_option('woocommerce_the_courier_guy_' . $shippingInstanceId . '_settings');
                 $pdfPageSize = $parameters['order_waybill_pdf_paper_size'];
                 $collectionParams = $parcelPerfectApiPayload->getCollectionPayload($order, $shippingItem, $parameters);
@@ -525,8 +539,11 @@ class TCG_Plugin extends CustomPlugin
                             ];
 
                             $query = "select * from $wpdb->postmeta where meta_key = '_shipping_quote' and meta_value = %s";
-                            $orderId = $wpdb->get_results($wpdb->prepare($query, [$quoteNumber]))[0]->post_id;
+                            $orderId = $wpdb->get_results($wpdb->prepare($query, [ $quoteNumber ]));
+                            if ( $orderId && count($orderId) > 0 ) {
+                                $orderId                  = $orderId[0]->post_id;
                             $payloadData['reference'] = $orderId;
+                            }
                             $parcelPerfectApi->setService($payloadData);
                         }
                     }
@@ -569,7 +586,7 @@ class TCG_Plugin extends CustomPlugin
             update_user_meta($customer->get_id(), 'tcg_place_id', sanitize_text_field($customProperties['tcg_place_id']));
             update_user_meta($customer->get_id(), 'tcg_place_label', sanitize_text_field($customProperties['tcg_place_label']));
             update_user_meta($customer->get_id(), 'tcg_insurance', sanitize_text_field($customProperties['tcg_insurance']));
-            update_user_meta($customer->get_id(), 'tcg_quoteno', sanitize_text_field($customProperties['tcg_quoteno']));
+            update_user_meta($customer->get_id(), 'tcg_quoteno', sanitize_text_field(isset($customProperties['tcg_quoteno']) ? $customProperties['tcg_quoteno'] : ''));
         } else {
             $_SESSION['tcg_place_id']    = sanitize_text_field($customProperties['tcg_place_id']);
             $_SESSION['tcg_place_label'] = sanitize_text_field($customProperties['tcg_place_label']);
@@ -655,6 +672,7 @@ class TCG_Plugin extends CustomPlugin
             file_put_contents($uploadsDirectory . '/' . $fileName, $generator->getBarcode($barcodeNumber, $generator::TYPE_CODE_128, 2, 50));
             $result = $uploadsDirectory . '/' . $fileName;
         }
+
         return $result;
     }
 
@@ -673,6 +691,7 @@ class TCG_Plugin extends CustomPlugin
         if (!empty($courierGuyShippingMethod)) {
             $shippingMethodSettings = $courierGuyShippingMethod->instance_settings;
         }
+
         return $shippingMethodSettings;
     }
 
@@ -694,6 +713,7 @@ class TCG_Plugin extends CustomPlugin
                 }
             }
         }
+
         return $result;
     }
 
@@ -876,6 +896,7 @@ class TCG_Plugin extends CustomPlugin
 
     /**
      * @param array $payloadData
+     *
      * @return mixed
      */
     private function getPlacesByName($payloadData)
@@ -903,8 +924,8 @@ class TCG_Plugin extends CustomPlugin
         $payloadData['printWaybill']        = 1;
 
         array_walk($shippingItems, function ( $shippingItem ) use ( $parcelPerfectApi, $order, $forceCollectionSending, $payloadData ) {
-            $shippingInstanceId = $shippingItem->get_meta('instance_id', true);
-            $shippingInstanceMethod = $shippingItem->get_meta('method_id', true);
+            $shippingInstanceId     = $shippingItem->get_instance_id();
+            $shippingInstanceMethod = $shippingItem->get_method_id();
             if (strstr($shippingInstanceMethod, 'the_courier_guy')) {
                 $parameters = get_option('woocommerce_the_courier_guy_' . $shippingInstanceId . '_settings');
                 if ($forceCollectionSending || (!empty($parameters['automatically_submit_collection_order']) && $parameters['automatically_submit_collection_order'] == 'yes')) {
@@ -938,7 +959,7 @@ class TCG_Plugin extends CustomPlugin
         if (!empty($order)) {
             $shippingItems = $order->get_items('shipping');
             array_walk($shippingItems, function ($shippingItem) use (&$result) {
-                $shippingInstanceMethod = $shippingItem->get_meta('method_id', true);
+                $shippingInstanceMethod = $shippingItem->get_method_id();
                 if (strstr($shippingInstanceMethod, 'the_courier_guy')) {
                     $result = true;
                 }

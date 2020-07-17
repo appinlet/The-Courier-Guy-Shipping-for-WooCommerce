@@ -80,7 +80,7 @@ class ParcelPerfectApiPayload
             'destpercontact' => $customer->get_shipping_first_name() . ' ' . $customer->get_shipping_last_name(),
             'destperpcode' => $postCode,
             'notifydestpers' => 1,
-            'destperemail' => $destination['email'],
+            'destperemail' => $destination['email'] ?? '' ,
         ];
     }
 
@@ -105,7 +105,7 @@ class ParcelPerfectApiPayload
             'destperpcode' => $order->get_shipping_postcode(),
             'notifydestpers' => 1,
             'destperemail' => $order->get_billing_email(),
-            'reference' => $order->get_order_id(),
+            'reference' => $order->get_id(),
         ];
     }
 
@@ -394,7 +394,7 @@ class ParcelPerfectApiPayload
                             $entry['dim1'] = (int) $product->get_width();
                             $entry['dim2'] = (int) $product->get_height();
                             $entry['dim3'] = (int) $product->get_length();
-                            sort($dim);
+                            sort($entry);
                         } else {
                             $entry['dim1'] = 1;
                             $entry['dim2'] = 1;
