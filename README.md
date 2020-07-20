@@ -3,7 +3,7 @@
 The Courier Guy extension for WooCommerce enables you to ship product using The Courier Guy.
 
 ### Unmerged features
-= 4.1.1 - Jul 17, 2020
+= 4.1.1 - Jul 20, 2020
 * Add conditional free shipping feature.
 * Add custom label and location for suburb area field.
 * Fix shipment notifications.
@@ -14,6 +14,11 @@ The Courier Guy extension for WooCommerce enables you to ship product using The 
 * Adjust Waybill position and add clickable link in emails.
 * Fix deprecated code warnings.
 * Fix PHP missing index warnings.
+* Fix collections submitted for the following day.
+* Fix contact number is present where the name is supposed to go.
+* Add option: If free shipping is active, remove all other shipping methods from checkout.
+* Add option: Enable free shipping if selected products are in the cart.
+* Add option: Enable free shipping if shipping total is a selected percentage of the total order value.
 
 ## Why Choose The Courier Guy?
 The Courier Guy has built a strong reputation through strong customer relations and effective personal service. Today The Courier Guy is trusted, recognized and the fastest growing courier company in South Africa.
