@@ -15,6 +15,7 @@ class CustomPostType
 
     /**
      * CustomPostType constructor.
+     *
      * @param string $identifier
      * @param array $options
      */
@@ -31,6 +32,7 @@ class CustomPostType
      * @param $postId
      * @param $metaKey
      * @param $single
+     *
      * @return mixed|string
      */
     public function filterPostMetaValue($metaData, $postId, $metaKey, $single)
@@ -43,6 +45,7 @@ class CustomPostType
             add_filter('get_post_metadata', [$this, 'filterPostMetaValue'], 100, 4);
             $result = do_shortcode($result);
         }
+
         return $result;
     }
 
@@ -64,6 +67,7 @@ class CustomPostType
 
     /**
      * @param $postType
+     *
      * @return array
      */
     private function getDefaultOptions($postType)
@@ -101,6 +105,7 @@ class CustomPostType
 
     /**
      * @param array $options
+     *
      * @return array
      */
     private function addLabelOptions($options)
@@ -129,6 +134,7 @@ class CustomPostType
                 'parent' => 'Parent ' . $displayName
             ];
         }
+
         return $options;
     }
 
@@ -214,6 +220,7 @@ class CustomPostType
 
     /**
      * @param $taxonomy
+     *
      * @return array
      */
     private function getDefaultTaxonomyOptions($taxonomy)
@@ -244,6 +251,7 @@ class CustomPostType
 
     /**
      * @param array $options
+     *
      * @return array
      */
     private function addTaxonomyLabelOptions($options)
@@ -269,6 +277,7 @@ class CustomPostType
                 'choose_from_most_used' => __('Choose from the most used ' . $displayNamePlural, '')
             ];
         }
+
         return $options;
     }
 
@@ -403,6 +412,7 @@ class CustomPostType
 
     /**
      * @param string $html
+     *
      * @return string $html
      */
     public function removeImageSizeAttributes($html)
@@ -419,7 +429,7 @@ class CustomPostType
             if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
                 return;
             }
-            if (!empty($_POST) && !wp_verify_nonce($_POST['jw_nonce'], plugin_basename(__FILE__))) {
+            if (!empty($_POST) && !wp_verify_nonce(isset($_POST['jw_nonce']) ? filter_var($_POST['jw_nonce'], FILTER_SANITIZE_STRING) : '', plugin_basename(__FILE__))) {
                 return;
             }
             global $post;
@@ -445,6 +455,9 @@ class CustomPostType
                                     }
                                 }
                             }
+                            update_post_meta($post->ID, $identifier, $value);
+                        } elseif ( empty($_POST[ $identifier ]) ) {
+                            $value = '';
                             update_post_meta($post->ID, $identifier, $value);
                         }
                     });

@@ -184,6 +184,7 @@ class ParcelPerfectApiPayload
         $k                           = 1;
         $j                           = 0;
 
+        $entry = [];
         switch ( true ) {
             case ( count($items) > 1 && $globalParcelItems > 1 ):
                 // Use global default and override individual product settings
@@ -268,7 +269,7 @@ class ParcelPerfectApiPayload
                             }
                         }
                     }
-                    $entry['desc']    = $slug;
+                    $entry['description']    = $slug;
                     $entry['actmass'] = $mass;
                     $entry['pieces']  = 1;
                     $r1[]             = $entry;
@@ -309,8 +310,9 @@ class ParcelPerfectApiPayload
                             $product         = new WC_Product($values['product_id']);
                             $prod            = get_post($values['product_id']);
                             $slug            = $prod->post_title;
+                            $entry = [];
                             $entry['item']   = $j;
-                            $entry['desc']   = $slug;
+                            $entry['description']   = $slug;
                             $entry['pieces'] = 1;
                             if ( isset($productParcelDim) ) {
                                 $entry['dim1'] = $productParcelDim[0];
@@ -326,7 +328,7 @@ class ParcelPerfectApiPayload
                                     $entry['dim1'] = $dim[0] * $factors[2];
                                     $entry['dim2'] = $dim[1] * $factors[1];
                                     $entry['dim3'] = $dim[2] * $factors[0];
-                                } else {
+                                } elseif ( empty($entry['dim1']) ) {
                                     $entry['dim1'] = 1;
                                     $entry['dim2'] = 1;
                                     $entry['dim3'] = 1;
@@ -350,7 +352,7 @@ class ParcelPerfectApiPayload
                             $prod            = get_post($values['product_id']);
                             $slug            = $prod->post_title;
                             $entry['item']   = $j;
-                            $entry['desc']   = $slug;
+                            $entry['description']   = $slug;
                             $entry['pieces'] = 1;
                             if ( isset($globalParcelDim) ) {
                                 $entry['dim1'] = $globalParcelDim[0];
@@ -366,7 +368,7 @@ class ParcelPerfectApiPayload
                                     $entry['dim1'] = $dim[0] * $factors[2];
                                     $entry['dim2'] = $dim[1] * $factors[1];
                                     $entry['dim3'] = $dim[2] * $factors[0];
-                                } else {
+                                } elseif ( empty($entry['dim1']) ) {
                                     $entry['dim1'] = 1;
                                     $entry['dim2'] = 1;
                                     $entry['dim3'] = 1;
@@ -387,15 +389,19 @@ class ParcelPerfectApiPayload
                         $product         = new WC_Product($values['product_id']);
                         $prod            = get_post($values['product_id']);
                         $slug            = $prod->post_title;
+                        $entry = [];
                         $entry['item']   = $j;
-                        $entry['desc']   = $slug;
+                        $entry['description']   = $slug;
                         $entry['pieces'] = $itemsCount;
                         if ( $product->has_dimensions() ) {
-                            $entry['dim1'] = (int) $product->get_width();
-                            $entry['dim2'] = (int) $product->get_height();
-                            $entry['dim3'] = (int) $product->get_length();
-                            sort($entry);
-                        } else {
+                            $dim['dim1'] = (int) $product->get_width();
+                            $dim['dim2'] = (int) $product->get_height();
+                            $dim['dim3'] = (int) $product->get_length();
+                            sort($dim);
+                            $entry['dim1'] = $dim[0];
+                            $entry['dim2'] = $dim[1];
+                            $entry['dim3'] = $dim[2];
+                        } elseif ( empty($entry['dim1']) ) {
                             $entry['dim1'] = 1;
                             $entry['dim2'] = 1;
                             $entry['dim3'] = 1;

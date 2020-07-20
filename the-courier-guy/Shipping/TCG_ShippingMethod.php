@@ -11,6 +11,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
 {
     /**
      * TCG_Shipping_Method constructor.
+     *
      * @param int $instance_id
      */
     public function __construct($instance_id = 0)
@@ -49,20 +50,24 @@ class TCG_Shipping_Method extends WC_Shipping_Method
     /**
      * @param array $settings
      * @param mixed $obj
+     *
      * @return mixed
      */
     public function setParcelPerfectApiCredentials($settings, $obj)
     {
         update_option('tcg_username', $settings['username']);
         update_option('tcg_password', $settings['password']);
+
         return $settings;
     }
 
     /**
      * Called to calculate shipping rates for this shipping method. Rates can be added using the add_rate() method.
      * This method must be overridden as it is called by the parent class WC_Shipping_Method.
-     * @uses WC_Shipping_Method::add_rate()
+     *
      * @param array $package Shipping package.
+     *
+     * @uses WC_Shipping_Method::add_rate()
      */
     public function calculate_shipping($package = [])
     {
@@ -87,6 +92,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
 
     /**
      * @param array $rates
+     *
      * @return array
      */
     private function sortRatesByTotalValueAscending($rates)
@@ -96,12 +102,14 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 return $x['total'] > $y['total'];
             });
         }
+
         return $rates;
     }
 
     /**
      * @param array $rates
      * @param array $package
+     *
      * @return array
      */
     private function addRates($rates, $package)
@@ -113,11 +121,27 @@ class TCG_Shipping_Method extends WC_Shipping_Method
         $priceRateOverrides = json_decode($this->get_instance_option('price_rate_override_per_service'), true);
         $labelOverrides = json_decode($this->get_instance_option('label_override_per_service'), true);
         if (!empty($rates) && is_array($rates)) {
+            $finalRates = [];
             foreach ($rates as $rate) {
                 $addedRates[] = $rate;
-                $this->addRate($rate, $package, $percentageMarkup, $priceRateOverrides, $labelOverrides);
+                $finalRates[] = $this->addRate($rate, $package, $percentageMarkup, $priceRateOverrides, $labelOverrides);
             }
         }
+
+        $hasFreeShipping = false;
+        foreach ( $finalRates as $finalRate ) {
+            if ( $finalRate['free'] ) {
+                $hasFreeShipping = true;
+            }
+        }
+        foreach ( $finalRates as $finalRate ) {
+            if ( $hasFreeShipping && $finalRate['free'] ) {
+                $this->add_rate($finalRate['rate']);
+            } elseif( !$hasFreeShipping ) {
+                $this->add_rate($finalRate['rate']);
+            }
+        }
+
         return $addedRates;
     }
 
@@ -142,6 +166,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
         if (!empty($lofServices)) {
             $filteredRates = $lofServices;
         }
+
         return $filteredRates;
     }
 
@@ -154,10 +179,24 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     private function addRate($rate, $package, $percentageMarkup, $priceRateOverrides, $labelOverrides)
     {
-
+        // Free shipping global settings
         $free_ship = $this->get_instance_option('free_shipping');
         $amount_for_free_shipping = $this->get_instance_option('amount_for_free_shipping');
         $rates_for_free_shipping = $this->get_instance_option('rates_for_free_shipping');
+        $percentage_for_free_shipping = 0.0;
+        if ( ! empty($this->get_instance_option('percentage_for_free_shipping')) ) {
+            $percentage_for_free_shipping = (float) $this->get_instance_option('percentage_for_free_shipping') / 100.0;
+        }
+
+        // Free shipping product settings
+        $product_free_shipping = $this->isProductFreeShipping($package);
+
+        // Does qualify for free shipping based on total value
+        $global_amount_free_shipping = false;
+        if ( $package['cart_subtotal'] >= $amount_for_free_shipping ) {
+            $global_amount_free_shipping = true;
+        }
+
         $rateTotal = $rate['total'];
         if ($rateTotal > 0) {
             $rateService = $rate['service'];
@@ -175,14 +214,10 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 $rateLabel = $labelOverrides[$rateService];
             }
 
-            //Check if free shipping is required
-            if ($free_ship == 'yes' ){
-                global $woocommerce;
-
-                if ($woocommerce->cart->subtotal > $amount_for_free_shipping && in_array($rate['service'], $rates_for_free_shipping)){
-                    $rateLabel = $rateLabel . ': Free Shipping';
-                    $totalPrice = 0;
-                }
+            // Does qualify for free shipping based on percentage
+            $global_percentage_free_shipping = false;
+            if ( $percentage_for_free_shipping > 0 && (float) ( $totalPrice / $package['cart_subtotal'] ) >= $percentage_for_free_shipping ) {
+                $global_percentage_free_shipping = true;
             }
 
             $shippingMethodId = 'the_courier_guy' . ':' . $rateService . ':' . $this->instance_id;
@@ -194,11 +229,70 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'calc_tax' => 'per_order',
                 'package' => $package
             ];
+
+            //Check if free shipping is required
+            if ( $free_ship == 'yes' ) {
+                global $woocommerce;
+
+                if ( ( $product_free_shipping || $global_amount_free_shipping || $global_percentage_free_shipping ) && in_array($rate['service'], $rates_for_free_shipping) ) {
+                    $args['label'] = $rateLabel . ': Free Shipping';
+                    $args['cost']  = 0;
+
             //The id variable must be changed, as this is used in the 'add_rate' method on the parent class WC_Shipping_Method.
             //@todo This logic is legacy from an older version of the plugin, there must be a better way, no time now.
             $this->id = $shippingMethodId;
+
+                    return array(
+                        'id'   => $this->id,
+                        'free' => true,
+                        'rate' => $args,
+                    );
+                    $this->add_rate($args);
+                } elseif ( ( $product_free_shipping || $global_amount_free_shipping || $global_percentage_free_shipping ) && ! in_array($rate['service'], $rates_for_free_shipping) ) {
+                    $this->id = $shippingMethodId;
+
+                    return array(
+                        'id'   => $this->id,
+                        'free' => false,
+                        'rate' => $args,
+                    );
             $this->add_rate($args);
+                } elseif ( ! ( $product_free_shipping || $global_amount_free_shipping || $global_percentage_free_shipping ) ) {
+                    $this->id = $shippingMethodId;
+
+                    return array(
+                        'id'   => $this->id,
+                        'free' => false,
+                        'rate' => $args,
+                    );
+                    $this->add_rate($args);
+                }
+            } else {
+                $this->id = $shippingMethodId;
+
+                return array(
+                    'id'   => $this->id,
+                    'free' => false,
+                    'rate' => $args,
+                );
+                $this->add_rate($args);
+            }
         }
+    }
+
+    private function isProductFreeShipping( $package )
+    {
+        // Check product package for free shipping products
+        if ( $this->get_instance_option('free_shipping') == 'yes' ) {
+            foreach ( $package['contents'] as $pack ) {
+                $pfs = get_post_meta($pack['product_id'], 'product_free_shipping');
+                if ( isset($pfs) && count($pfs) > 0 && $pfs[0] == 'on' ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -408,6 +502,21 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 ]
 
             ],
+            'percentage_for_free_shipping'          => [
+                'title'             => __('Percentage for free Shipping', 'woocommerce'),
+                'type'              => 'number',
+                'description'       => __('Enter the percentage (shipping of product) that qualifies for free shipping when enabled. Zero to disable', 'woocommerce'),
+                'default'           => '0',
+                'custom_attributes' => [
+                    'min' => '0'
+                ]
+            ],
+            'product_free_shipping'                 => [
+                'title'       => __('Enable free shipping from product setting', 'woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('This will enable free shipping if the product is included in the basket', 'woocommerce'),
+                'default'     => ''
+            ],
             'Suburb_location' => [
                 'title' => __('Suburb location', 'woocommerce'),
                 'type' => 'select',
@@ -449,14 +558,16 @@ class TCG_Shipping_Method extends WC_Shipping_Method
     /**
      * This method is called to build the UI for custom shipping setting of type 'tcg_override_per_service'.
      * This method must be overridden as it is called by the parent class WC_Settings_API.
+     *
+     * @param $key
+     * @param $data
+     *
+     * @return string
+     * @uses WC_Settings_API::get_custom_attribute_html()
+     * @uses WC_Shipping_Method::get_option()
      * @uses WC_Settings_API::get_field_key()
      * @uses WC_Settings_API::get_tooltip_html()
      * @uses WC_Settings_API::get_description_html()
-     * @uses WC_Settings_API::get_custom_attribute_html()
-     * @uses WC_Shipping_Method::get_option()
-     * @param $key
-     * @param $data
-     * @return string
      */
     public function generate_tcg_override_per_service_html($key, $data)
     {
@@ -512,7 +623,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                                 <?php
                             }
                             ?>
-                            <input data-service-id="<?php echo esc_attr($option_key); ?>" class="<?= $class; ?> input-text regular-input <?php echo esc_attr($data['class']); ?>-input" type="text"<?= $style; ?> value="<?= $overrideValues[$option_key]; ?>"/>
+                            <input data-service-id="<?php echo esc_attr($option_key); ?>" class="<?= $class; ?> input-text regular-input <?php echo esc_attr($data['class']); ?>-input" type="text"<?= $style; ?> value="<?= isset($overrideValues[$option_key]) ? $overrideValues[$option_key] : ''; ?>"/>
                         </span>
                     <?php endforeach; ?>
                     <?php echo $this->get_description_html($data); // WPCS: XSS ok.

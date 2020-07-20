@@ -33,6 +33,13 @@ $customPostType->addMetaBox('The Courier Guy Settings',
                 'description'   => 'Height of a parcel',
                 'placeholder'   => '1',
             ],
+            'product_free_shipping'   => [
+                'display_name'  => 'Free Shipping',
+                'property_type' => 'checkbox',
+                'description'   => __('Enable free shipping for baskets including this product', 'woocommerce' ),
+                'placeholder' => '',
+                'default'   => '0',
+            ],
         ]
     ]
 );

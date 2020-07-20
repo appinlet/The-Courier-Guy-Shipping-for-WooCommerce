@@ -1,5 +1,5 @@
 <?php
-$disclaimerValue = $metaData[$identifier . '_disclaimer'][0];
+$disclaimerValue       = isset($metaData[ $identifier . '_disclaimer' ]) ? $metaData[ $identifier . '_disclaimer' ][0] : '';
 $disclaimerChecked = (!empty($disclaimerValue) ? ' checked' : '');
 $disclaimerDescription = $properties['disclaimer_description'];
 ?>
