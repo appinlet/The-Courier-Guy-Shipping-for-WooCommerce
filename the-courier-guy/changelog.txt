@@ -15,3 +15,4 @@
 * Add option: If free shipping is active, remove all other shipping methods from checkout.
 * Add option: Enable free shipping if selected products are in the cart.
 * Add option: Enable free shipping if shipping total is a selected percentage of the total order value.
+* Added VAT option for TCG shipping.

@@ -179,6 +179,13 @@ class TCG_Shipping_Method extends WC_Shipping_Method
      */
     private function addRate($rate, $package, $percentageMarkup, $priceRateOverrides, $labelOverrides)
     {
+        // Get tax rates
+        $tax     = WC_Tax::get_rates_for_tax_class('');
+        $taxRate = 0.0;
+        if ( $this->get_instance_option('tax_status') === 'taxable' ) {
+            $taxRate = $tax ? $tax[1]->tax_rate / 100.0 : 0.0;
+        }
+
         // Free shipping global settings
         $free_ship = $this->get_instance_option('free_shipping');
         $amount_for_free_shipping = $this->get_instance_option('amount_for_free_shipping');
@@ -220,12 +227,15 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 $global_percentage_free_shipping = true;
             }
 
+            $cost  = number_format($totalPrice / ( 1 + $taxRate ), 2);
+            $taxes = $totalPrice - $cost;
+
             $shippingMethodId = 'the_courier_guy' . ':' . $rateService . ':' . $this->instance_id;
             $args = [
                 'id' => $shippingMethodId,
                 'label' => $rateLabel,
-                'cost' => $totalPrice,
-                'taxes' => '',
+                'cost'     => $cost,
+                'taxes'    => [1 => $taxes],
                 'calc_tax' => 'per_order',
                 'package' => $package
             ];
@@ -270,12 +280,13 @@ class TCG_Shipping_Method extends WC_Shipping_Method
             } else {
                 $this->id = $shippingMethodId;
 
+                $this->add_rate($args);
+
                 return array(
                     'id'   => $this->id,
                     'free' => false,
                     'rate' => $args,
                 );
-                $this->add_rate($args);
             }
         }
     }
@@ -313,6 +324,13 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'type' => 'text',
                 'description' => __('The account number supplied by The Courier Guy for integration purposes.', 'woocommerce'),
                 'default' => __('', 'woocommerce')
+            ],
+            'tax_status'                            => [
+                'title'       => __('Tax status', 'woocommerce'),
+                'type'        => 'select',
+                'options'     => [ 'taxable' => 'Taxable', 'none' => 'None' ],
+                'description' => __('VAT applies or not', 'woocommerce'),
+                'default'     => __('taxable', 'woocommerce')
             ],
             'username' => [
                 'title' => __('Username', 'woocommerce'),
