@@ -1,3 +1,6 @@
+= 4.2.1 - Jul 28, 2020
+* Remove delivery date selection from checkout.
+
 = 4.2.0 - Jul 25, 2020
 * Add conditional free shipping feature.
 * Add custom label and location for suburb area field.
