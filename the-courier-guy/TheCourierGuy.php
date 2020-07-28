@@ -5,7 +5,7 @@
  * Author: The Courier Guy
  * Author URI: https://www.thecourierguy.co.za/
  * Contributor: App Inlet
- * Version: 4.1.1
+ * Version: 4.2.0
  * Plugin Slug: wp-plugin-the-courier-guy
  * Text Domain: the-courier-guy
  */
