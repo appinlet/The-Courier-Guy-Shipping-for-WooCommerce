@@ -58,30 +58,6 @@ class TCG_Plugin extends CustomPlugin
         add_action('woocommerce_order_status_processing', [$this, 'setCollectionOnOrderProcessing']);
         add_action('woocommerce_checkout_update_order_meta', [$this, 'updateShippingPropertiesOnOrder'], 10, 2);
         add_action('woocommerce_checkout_update_order_meta', [ $this, 'updateTCGServiceOnOrder' ], 20, 2);
-        add_action('woocommerce_review_order_before_payment', [ $this, 'addTcgDeliveryDateFields' ], 10, 1);
-    }
-
-    public function addTcgDeliveryDateFields( $a )
-    {
-        $time = new DateTime(null, new DateTimeZone('Africa/Johannesburg'));
-        $today = $time->format('Y-m-d');
-        $start = $time->format('H:i');
-        $close = '20:00';
-        echo <<<HTML
-<div class="tcgDeliveryDateFieldHidden tcgDeliveryDate">
-<strong>Choose TheCourierGuy delivery options</strong>
-<label for="tcgDeliveryDate"> <strong> Delivery Date</strong>
-<input type="date" name="tcgDeliveryDate" id="tcgDeliveryDate" value="$today">
-</label>
-<label for="tcgDeliveryWindowStart"> <strong> Delivery Window Start</strong>
-<input type="time" name="tcgDeliveryWindowStart" id="tcgDeliveryWindowStart" value="$start">
-</label>
-<label for="tcgDeliveryWindowClose"> <strong> Delivery Window Close</strong>
-<input type="time" name="tcgDeliveryWindowClose" id="tcgDeliveryWindowClose" value="$close">
-</label>
-</div>
-HTML;
-
     }
 
     public function updateTCGServiceOnOrder($orderId, $data)
@@ -115,9 +91,6 @@ HTML;
         update_post_meta($orderId, '_shipping_area', $placeId);
         update_post_meta($orderId, '_shipping_place', $placeLabel);
         update_post_meta($orderId, '_shipping_method', $data['shipping_method'][0]);
-        update_post_meta($orderId, '_tcg_delivery_date', filter_var($_POST['tcgDeliveryDate'], FILTER_SANITIZE_STRING));
-        update_post_meta($orderId, '_tcg_delivery_start', filter_var($_POST['tcgDeliveryWindowStart'], FILTER_SANITIZE_STRING));
-        update_post_meta($orderId, '_tcg_delivery_close', filter_var($_POST['tcgDeliveryWindowClose'], FILTER_SANITIZE_STRING));
 
         $order = new WC_Order( $orderId );
 
@@ -939,22 +912,15 @@ HTML;
      */
     private function setCollection($order, $forceCollectionSending = false)
     {
+        $shippingCustomProperties = $this->getShippingCustomProperties($order);
         $parcelPerfectApi = $this->getParcelPerfectApi();
         $shippingItems = $order->get_items('shipping');
         $quoteno                  = get_post_meta($order->get_id(), '_shipping_quote')[0];
-        $quoteCollectionDate = get_post_meta($order->get_id(), '_tcg_delivery_date')[0];
-        $starttime           = get_post_meta($order->get_id(), '_tcg_delivery_start')[0];
-        $endtime             = get_post_meta($order->get_id(), '_tcg_delivery_close')[0];
-        $today               = ( new DateTime() )->format('d.m.Y');
-        $quoteCollectionDate = ( new DateTime($quoteCollectionDate) )->format('d.m.Y');
-        if ( $today == $quoteCollectionDate ) {
-            $quoteCollectionDate = '';
-        }
 
         $payloadData['quoteno']             = $quoteno;
-        $payloadData['quoteCollectionDate'] = $quoteCollectionDate;
-        $payloadData['starttime']           = $starttime;
-        $payloadData['endtime']             = $endtime;
+        $payloadData['quoteCollectionDate'] = '';
+        $payloadData['starttime']           = ( new DateTime() )->add(new DateInterval('PT1H'))->format('H:i:s');
+        $payloadData['endtime']             = '18:00:00';
         $payloadData['printWaybill']        = 1;
 
         array_walk($shippingItems, function ( $shippingItem ) use ( $parcelPerfectApi, $order, $forceCollectionSending, $payloadData ) {

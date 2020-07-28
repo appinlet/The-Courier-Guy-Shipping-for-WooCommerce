@@ -1,30 +1,4 @@
 (function ($) {
-    const shippingMethods = $('input.shipping_method');
-    let showTcgDate = false;
-    $.each(shippingMethods, function (index, shippingMethod) {
-        if (shippingMethod.checked && shippingMethod.value.startsWith('the_courier_guy')) {
-            showTcgDate = true;
-        }
-    });
-
-    if(showTcgDate) {
-        $('div.tcgDeliveryDate').removeClass('tcgDeliveryDateFieldHidden');
-        $('div.tcgDeliveryDate').addClass('tcgDeliveryDateFieldShown');
-    } else {
-        $('div.tcgDeliveryDate').addClass('tcgDeliveryDateFieldHidden');
-        $('div.tcgDeliveryDate').removeClass('tcgDeliveryDateFieldShown');
-    }
-
-    $('body').on('click', 'input.shipping_method', function () {
-        if (this.value.startsWith('the_courier_guy')) {
-            $('div.tcgDeliveryDate').removeClass('tcgDeliveryDateFieldHidden');
-            $('div.tcgDeliveryDate').addClass('tcgDeliveryDateFieldShown');
-        } else {
-            $('div.tcgDeliveryDate').addClass('tcgDeliveryDateFieldHidden');
-            $('div.tcgDeliveryDate').removeClass('tcgDeliveryDateFieldShown');
-        }
-    });
-
     $(function () {
         //cart
         $('body').on('click', '.shipping-calculator-button', function () {
