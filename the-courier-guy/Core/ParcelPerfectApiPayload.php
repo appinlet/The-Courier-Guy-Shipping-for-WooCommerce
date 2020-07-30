@@ -20,9 +20,9 @@ class ParcelPerfectApiPayload
      *
      * @return array
      */
-    private function getOriginPayload($parameters)
+    private function getOriginPayload($parameters, $package)
     {
-        return [
+        $ret = [
             'accnum' => $parameters['account'],
             'reference' => '',
             'origperadd1' => $parameters['shopAddress1'],
@@ -39,6 +39,22 @@ class ParcelPerfectApiPayload
             'notifyorigpers' => 1,
             'origperemail' => $parameters['shopEmail'],
         ];
+
+        if($package && isset($package['destination']['place'])) {
+            if ($package['destination']['place'] === $parameters['shopPlace_bind']) {
+                $ret['origperadd1'] = $parameters['shopAddress1_bind'];
+                $ret['origperadd2'] = $parameters['shopAddress2_bind'];
+                $ret['origperadd3'] = $parameters['shopCity_bind'];
+                $ret['origperphone'] = $parameters['shopPhone_bind'];
+                $ret['origplace'] = $parameters['shopArea_bind'];
+                $ret['origtown'] = $parameters['shopPlace_bind'];
+                $ret['origpercontact'] = $parameters['contact_name_bind'];
+                $ret['origpercode'] = $parameters['shopPostalCode_bind'];
+            }
+        }
+
+        return $ret;
+
     }
 
     /**
@@ -239,8 +255,12 @@ class ParcelPerfectApiPayload
                     $slug          = '';
                     $mass          = 0;
                     foreach ( $parcel as $content ) {
-                        $itemsCount = (int) $content['quantity'];
-                        $product    = new WC_Product($content['product_id']);
+                        $itemsCount = (int)$content['quantity'];
+                        if ($content['variation_id'] === 0) {
+                            $product = new WC_Product($content['product_id']);
+                        } else {
+                            $product = new WC_Product_Variation($content['variation_id']);
+                        }
                         $prod       = get_post($content['product_id']);
                         $slug       .= $slug != '' ? '_' . $prod->post_title : $prod->post_title;
                         if ( $product->has_weight() ) {
@@ -307,7 +327,11 @@ class ParcelPerfectApiPayload
                         while ( $itemsCount >= 0 ) {
                             $j ++;
                             $parcelCount     = min($itemsCount, $maxProductQuantityPerParcel);
-                            $product         = new WC_Product($values['product_id']);
+                            if($values['variation_id'] === 0) {
+                                $product = new WC_Product($values['product_id']);
+                            } else {
+                                $product = new WC_Product_Variation($values['variation_id']);
+                            }
                             $prod            = get_post($values['product_id']);
                             $slug            = $prod->post_title;
                             $entry = [];
@@ -348,7 +372,11 @@ class ParcelPerfectApiPayload
                         while ( $itemsCount >= 0 ) {
                             $j ++;
                             $parcelCount     = min($itemsCount, $globalParcelItems);
-                            $product         = new WC_Product($values['product_id']);
+                            if($values['variation_id'] === 0) {
+                                $product = new WC_Product($values['product_id']);
+                            } else {
+                                $product = new WC_Product_Variation($values['variation_id']);
+                            }
                             $prod            = get_post($values['product_id']);
                             $slug            = $prod->post_title;
                             $entry['item']   = $j;
@@ -386,13 +414,18 @@ class ParcelPerfectApiPayload
                     } else {
                         // Only single items - no parcels
                         $j ++;
-                        $product         = new WC_Product($values['product_id']);
+                        if($values['variation_id'] === 0) {
+                            $product = new WC_Product($values['product_id']);
+                        } else {
+                            $product = new WC_Product_Variation(($values['variation_id']));
+                        }
                         $prod            = get_post($values['product_id']);
                         $slug            = $prod->post_title;
                         $entry = [];
                         $entry['item']   = $j;
                         $entry['description']   = $slug;
                         $entry['pieces'] = $itemsCount;
+
                         if ( $product->has_dimensions() ) {
                             $dim['dim1'] = (int) $product->get_width();
                             $dim['dim2'] = (int) $product->get_height();
@@ -431,10 +464,21 @@ class ParcelPerfectApiPayload
     {
         /** @var TCG_Plugin $TCG_Plugin */
         global $TCG_Plugin;
+
+        $postFields = [];
+        if(isset($_POST['post_data'])) {
+            $postData = filter_var($_POST['post_data'], FILTER_SANITIZE_STRING);
+            parse_str($postData, $postFields);
+        }
+
+        if(count($postFields) > 0){
+            $package['destination']['place'] = $postFields['billing_tcg_place_lookup_place_label'];
+        }
+
         $result = [];
         $customShippingProperties = $TCG_Plugin->getShippingCustomProperties();
         if (!empty($parameters) && !empty($customShippingProperties['tcg_place_id']) && !empty($customShippingProperties['tcg_place_label'])) {
-            $originPayload = $this->getOriginPayload($parameters);
+            $originPayload = $this->getOriginPayload($parameters, $package);
             $destinationPayload = $this->getDestinationPayloadForQuote($package);
             $insurancePayload = $this->getInsurancePayloadForQuote();
             $detailsPayload = array_merge($originPayload, ['reference' => $destinationPayload['destpers'],], $destinationPayload, $insurancePayload);

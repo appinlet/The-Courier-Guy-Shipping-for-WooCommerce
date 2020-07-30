@@ -94,11 +94,12 @@ class TCG_Plugin extends CustomPlugin
 
         $order = new WC_Order( $orderId );
 
-        if ( isset($_SESSION['cachedQuoteResponse']) && $_SESSION['cachedQuoteResponse'] != '' ) {
-            $quoteno = json_decode($_SESSION['cachedQuoteResponse'])[0]->quoteno;
+        if ($wcSession = WC()->session) {
+            $response = $wcSession->get('tcg_response_' . $wcSession->get_customer_id());
+            $quoteno = json_decode($response)[0]->quoteno;
             update_post_meta($orderId, '_shipping_quote', $quoteno);
-            $order->add_order_note('Shipping on order: ' . json_encode($_SESSION['cachedQuoteResponse']));
-        }
+            $order->add_order_note('Shipping on order: ' . $response);
+            }
         $order->add_order_note('Order shipping total on order: ' . $order->get_shipping_total());
         $this->clearShippingCustomProperties();
     }
@@ -109,6 +110,7 @@ class TCG_Plugin extends CustomPlugin
     public function updateShippingPropertiesFromCheckout($postData)
     {
         parse_str($postData, $parameters);
+
         $addressPrefix = 'shipping_';
         if (!isset($parameters['ship_to_different_address']) || $parameters['ship_to_different_address'] != true) {
             $addressPrefix = 'billing_';
@@ -123,8 +125,11 @@ class TCG_Plugin extends CustomPlugin
             'tcg_insurance' => $insurance,
         ];
 
-        if ( isset($_SESSION['cachedQuoteResponse']) ) {
-            $customProperties['tcg_quoteno'] = json_decode($_SESSION['cachedQuoteResponse'])[0]->quoteno;
+        if ($wcSession = WC()->session) {
+            $qn = $wcSession->get('tcg_response_' . $wcSession->get_customer_id());
+            if($qn != '') {
+                $customProperties['tcg_quoteno'] = json_decode($qn)[0]->quoteno;
+            }
         }
 
         $this->setShippingCustomProperties($customProperties);
@@ -777,13 +782,15 @@ HTML;
                 'class' => ['form-row-last'],
             ]
         ]);
-        $addressFields[$addressType . '_insurance'] = [
-            'type' => 'checkbox',
-            'label' => 'Would you like to include Shipping Insurance',
-            'required' => false,
-            'class' => ['form-row-wide', 'tcg-insurance'],
-            'priority' => 90,
-        ];
+        if ($shippingMethodSettings['billing_insurance'] === 'yes') {
+            $addressFields[$addressType . '_insurance'] = [
+                'type'     => 'checkbox',
+                'label'    => 'Would you like to include Shipping Insurance',
+                'required' => false,
+                'class'    => ['form-row-wide', 'tcg-insurance'],
+                'priority' => 90,
+            ];
+        }
         $addressFields[ $addressType . '_tcg_quoteno' ] = [
             'type'     => 'text',
             'label'    => 'TCG Quote Number',
@@ -1001,8 +1008,10 @@ HTML;
 
     private function clearCachedQuote()
     {
-        unset($_SESSION['cachedQuoteRequest']);
-        unset($_SESSION['cachedQuoteResponse']);
+        if($wcSession = WC()->session){
+            $wcSession->set('tcg_response_' . $wcSession->get_customer_id(), '');
+            $wcSession->set('tcg_request_' . $wcSession->get_customer_id(), '');
+        }
     }
 
     /**
@@ -1010,7 +1019,9 @@ HTML;
      */
     private function updateCachedQuoteResponse($quoteResponse)
     {
-        $_SESSION['cachedQuoteResponse'] = json_encode($quoteResponse);
+        if($wcSession = WC()->session){
+            $wcSession->set('tcg_response_' . $wcSession->get_customer_id(), json_encode($quoteResponse));
+        }
     }
 
     /**
@@ -1018,7 +1029,9 @@ HTML;
      */
     private function getCachedQuoteResponse()
     {
-        return $_SESSION['cachedQuoteResponse'];
+        if($wcSession = WC()->session){
+            return $wcSession->get('tcg_response_' . $wcSession->get_customer_id());
+        }
     }
 
     /**
@@ -1026,9 +1039,8 @@ HTML;
      */
     private function updateCachedQuoteRequest($quoteParams)
     {
-        if (null !== WC()->session) {
-            $wcSession = WC()->session;
-            $_SESSION['cachedQuoteRequest'] = hash('md5', json_encode($quoteParams) . $wcSession->_customer_id);
+        if ($wcSession = WC()->session) {
+            $wcSession->set('tcg_request_' . $wcSession->get_customer_id(), hash('md5', json_encode($quoteParams) . $wcSession->get_customer_id()));
         }
     }
 
@@ -1040,11 +1052,10 @@ HTML;
     private function compareCachedQuoteRequest($quoteParams)
     {
         $result = false;
-        if (!empty($_SESSION['cachedQuoteRequest'])) {
-            $wcSession = WC()->session;
-            $cachedQuoteHash = $_SESSION['cachedQuoteRequest'];
-            $compareQuoteHash = hash('md5', json_encode($quoteParams, true) . $wcSession->_customer_id);
-            if (!empty($cachedQuoteHash) && ($compareQuoteHash == $cachedQuoteHash)) {
+        if ($wcSession = WC()->session) {
+            $cachedQuoteHash = $wcSession->get('tcg_request_' . $wcSession->get_customer_id());
+            $compareQuoteHash = hash('md5', json_encode($quoteParams, true) . $wcSession->get_customer_id());
+            if ($compareQuoteHash == $cachedQuoteHash) {
                 $result = true;
             }
         }

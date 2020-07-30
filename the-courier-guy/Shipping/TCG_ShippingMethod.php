@@ -227,7 +227,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 $global_percentage_free_shipping = true;
             }
 
-            $cost  = number_format($totalPrice / ( 1 + $taxRate ), 2);
+            $cost  = round((float)$totalPrice / ( 1 + $taxRate ), 2);
             $taxes = $totalPrice - $cost;
 
             $shippingMethodId = 'the_courier_guy' . ':' . $rateService . ':' . $this->instance_id;
@@ -385,7 +385,6 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'type' => 'tcg_shop_area',
                 'description' => __('The suburb used to calculate shipping, this is considered the collection point for the parcels being shipping.', 'woocommerce') . '<br/>' . __('It is important to note that you will need to save the Shipping Method, with the correct \'Account number\', \'Username\' and \'Password\' in order for this setting to auto-complete and populate the \'Shop Area / Suburb\' options from The Courier Guy.', 'woocommerce'),
                 'default' => '',
-                'class' => 'tcg-suburb-field',
             ],
             'shopPlace' => [
                 'type' => 'hidden',
@@ -395,6 +394,52 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'title' => __('Shop Town / City', 'woocommerce'),
                 'type' => 'text',
                 'description' => __('The suburb used to calculate shipping, this is considered the collection point for the parcels being shipping. This is the town/city used as the origin in the waybill.', 'woocommerce'),
+                'default' => '',
+            ],
+            'contact_name_bind' => [
+                'title' => __('Contact Name (Bind Hub)', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('The name of a contact at your company for the bind hub.', 'woocommerce'),
+                'default' => '',
+            ],
+            'shopAddress1_bind' => [
+                'title' => __('Shop Address1_bind', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('The address used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce'),
+                'default' => '',
+            ],
+            'shopAddress2_bind' => [
+                'title' => __('Shop Address2_bind', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('The address used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce'),
+                'default' => '',
+            ],
+            'shopPostalCode_bind' => [
+                'title' => __('Shop Postal Code (Bind Hub)', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('The address used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce'),
+                'default' => '',
+            ],
+            'shopPhone_bind' => [
+                'title' => __('Shop Phone (Bind Hub)', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('The telephone number to contact the bind hub, this may be used by the courier.', 'woocommerce'),
+                'default' => '',
+            ],
+            'shopArea_bind' => [
+                'title' => __('Shop Area / Suburb (Bind Hub)', 'woocommerce'),
+                'type' => 'tcg_shop_area',
+                'description' => __('The suburb used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce') . '<br/>' . __('It is important to note that you will need to save the Shipping Method, with the correct \'Account number\', \'Username\' and \'Password\' in order for this setting to auto-complete and populate the \'Shop Area / Suburb\' options from The Courier Guy.', 'woocommerce'),
+                'default' => '',
+            ],
+            'shopPlace_bind' => [
+                'type' => 'hidden',
+                'default' => '',
+            ],
+            'shopCity_bind' => [
+                'title' => __('Shop Town / City (Bind Hub)', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('The suburb used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping. This is the town/city used as the origin in the waybill.', 'woocommerce'),
                 'default' => '',
             ],
             'excludes' => [
@@ -492,6 +537,12 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'default' => '4',
                 'placeholder' => '4',
             ],
+            'billing_insurance'                         => [
+                'title'       => __('Enable shipping insurance ', 'woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('This will enable the shipping insurance field on the chaeckout page', 'woocommerce'),
+                'default'     => ''
+            ],
             'free_shipping' => [
                 'title' => __('Enable free shipping ', 'woocommerce'),
                 'type' => 'checkbox',
@@ -562,7 +613,20 @@ class TCG_Shipping_Method extends WC_Shipping_Method
     private function getRateOptions()
     {
         //@todo The contents of this method is legacy code from an older version of the plugin.
-        return json_decode('{"AIR":"AIR: Airfreight","ECO":"ECO: Economy (Domestic Road Freight)","LLS":"LLS: Local Late Sameday","LOF":"LOF: Local Overnight Flyer","LOX":"LOX: Local Overnight Parcels","LSE":"LSE: Local Sameday Economy","LSF":"LSF: Local Sameday Flyer","LSX":"LSX: Local Sameday Express","OVN":"OVN: Overnight Courier","SDX":"SDX: Express Sameday"}');
+        $rateOptions = new stdClass();
+        $rateOptions->AIR = "AIR: Airfreight";
+        $rateOptions->ECO = "ECO: Economy (Domestic Road Freight)";
+        $rateOptions->LLS = "LLS: Local Late Sameday";
+        $rateOptions->LOF = "LOF: Local Overnight Flyer";
+        $rateOptions->LOX = "LOX: Local Overnight Parcels";
+        $rateOptions->LSE = "LSE: Local Sameday Economy";
+        $rateOptions->LSF = "LSF: Local Sameday Flyer";
+        $rateOptions->LSX = "LSX: Local Sameday Express";
+        $rateOptions->NFS = "NFS National Flyer Service";
+        $rateOptions->OVN = "OVN: Overnight Courier";
+        $rateOptions->SDX = "SDX: Express Sameday";
+
+        return $rateOptions;
     }
     /**
      *getSuburbLocationOptions() -> returns an array of locations from the checkout form
@@ -736,7 +800,8 @@ class TCG_Shipping_Method extends WC_Shipping_Method
             'options' => [],
         ];
         $data = wp_parse_args($data, $defaults);
-        $name = esc_attr($this->get_option('shopPlace'));
+        $key1 = str_replace('Area', 'Place', $key);
+        $name = esc_attr($this->get_option($key1));
         $id = esc_attr($this->get_option($key));
         $data['options'] = [
             $id => $name
