@@ -2,10 +2,6 @@
 ## Description
 The Courier Guy extension for WooCommerce enables you to ship product using The Courier Guy.
 
-### Unmerged features
-= 4.2.1 - Jul 28, 2020
-* Remove delivery date selection from checkout.
-
 ## Why Choose The Courier Guy?
 The Courier Guy has built a strong reputation through strong customer relations and effective personal service. Today The Courier Guy is trusted, recognized and the fastest growing courier company in South Africa.
 
