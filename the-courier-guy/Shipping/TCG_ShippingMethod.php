@@ -385,6 +385,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'type' => 'tcg_shop_area',
                 'description' => __('The suburb used to calculate shipping, this is considered the collection point for the parcels being shipping.', 'woocommerce') . '<br/>' . __('It is important to note that you will need to save the Shipping Method, with the correct \'Account number\', \'Username\' and \'Password\' in order for this setting to auto-complete and populate the \'Shop Area / Suburb\' options from The Courier Guy.', 'woocommerce'),
                 'default' => '',
+                'class' => 'tcg-suburb-field',
             ],
             'shopPlace' => [
                 'type' => 'hidden',
@@ -394,52 +395,6 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'title' => __('Shop Town / City', 'woocommerce'),
                 'type' => 'text',
                 'description' => __('The suburb used to calculate shipping, this is considered the collection point for the parcels being shipping. This is the town/city used as the origin in the waybill.', 'woocommerce'),
-                'default' => '',
-            ],
-            'contact_name_bind' => [
-                'title' => __('Contact Name (Bind Hub)', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('The name of a contact at your company for the bind hub.', 'woocommerce'),
-                'default' => '',
-            ],
-            'shopAddress1_bind' => [
-                'title' => __('Shop Address1_bind', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('The address used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce'),
-                'default' => '',
-            ],
-            'shopAddress2_bind' => [
-                'title' => __('Shop Address2_bind', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('The address used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce'),
-                'default' => '',
-            ],
-            'shopPostalCode_bind' => [
-                'title' => __('Shop Postal Code (Bind Hub)', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('The address used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce'),
-                'default' => '',
-            ],
-            'shopPhone_bind' => [
-                'title' => __('Shop Phone (Bind Hub)', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('The telephone number to contact the bind hub, this may be used by the courier.', 'woocommerce'),
-                'default' => '',
-            ],
-            'shopArea_bind' => [
-                'title' => __('Shop Area / Suburb (Bind Hub)', 'woocommerce'),
-                'type' => 'tcg_shop_area',
-                'description' => __('The suburb used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping.', 'woocommerce') . '<br/>' . __('It is important to note that you will need to save the Shipping Method, with the correct \'Account number\', \'Username\' and \'Password\' in order for this setting to auto-complete and populate the \'Shop Area / Suburb\' options from The Courier Guy.', 'woocommerce'),
-                'default' => '',
-            ],
-            'shopPlace_bind' => [
-                'type' => 'hidden',
-                'default' => '',
-            ],
-            'shopCity_bind' => [
-                'title' => __('Shop Town / City (Bind Hub)', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('The suburb used to calculate shipping from the bind hub, this is considered the collection point for the parcels being shipping. This is the town/city used as the origin in the waybill.', 'woocommerce'),
                 'default' => '',
             ],
             'excludes' => [
@@ -467,10 +422,10 @@ class TCG_Shipping_Method extends WC_Shipping_Method
                 'default' => ''
             ],
             'south_africa_only' => [
-                'title' => __('South Africa Only', 'woocommerce'),
+                'title' => __('Ship internationally using other carriers', 'woocommerce'),
                 'type' => 'checkbox',
-                'description' => __('This will determine whether or not to hide/show The Courier Guy \'Suburb/Area\' select when changing countries on the checkout page.', 'woocommerce'),
-                'default' => ''
+                'description' => __('When enabled, this will hide The Courier Guy \'Suburb/Area\' when changing countries on the checkout page and will not make the field \'required\'. If unsure, leave this disabled.', 'woocommerce'),
+                'default' => 'no'
             ],
             'lof_only_service' => [
                 'title' => __('LOF Only Service', 'woocommerce'),
@@ -540,8 +495,8 @@ class TCG_Shipping_Method extends WC_Shipping_Method
             'billing_insurance'                         => [
                 'title'       => __('Enable shipping insurance ', 'woocommerce'),
                 'type'        => 'checkbox',
-                'description' => __('This will enable the shipping insurance field on the chaeckout page', 'woocommerce'),
-                'default'     => ''
+                'description' => __('This will enable the shipping insurance field on the checkout page', 'woocommerce'),
+                'default'     => 'no'
             ],
             'free_shipping' => [
                 'title' => __('Enable free shipping ', 'woocommerce'),
@@ -800,8 +755,7 @@ class TCG_Shipping_Method extends WC_Shipping_Method
             'options' => [],
         ];
         $data = wp_parse_args($data, $defaults);
-        $key1 = str_replace('Area', 'Place', $key);
-        $name = esc_attr($this->get_option($key1));
+        $name = esc_attr($this->get_option('shopPlace'));
         $id = esc_attr($this->get_option($key));
         $data['options'] = [
             $id => $name

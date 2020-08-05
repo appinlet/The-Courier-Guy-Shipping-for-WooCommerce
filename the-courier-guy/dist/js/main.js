@@ -27,7 +27,6 @@
                         },
                         closeOnSelect: true,
                         processResults: function (data) {
-                            clearPlaceSelects();
                             var results = [];
                             $.each(data, function (index, item) {
                                 results.push({
@@ -52,6 +51,7 @@
                             placeLabelInput.val(option.text());
                         }
                     });
+                    $('body').trigger('update_checkout');
                 });
             }
         }
@@ -64,6 +64,15 @@
         $('.tcg-insurance').on('change', function () {
             $('.tcg-suburb-field select').trigger('change');
         });
+
+        /*$('#billing_autocomplete').on('change', function (event) {
+            event.preventDefault();
+            var select2 = $('.tcg-suburb-field select');
+            select2.trigger('open');
+            var search = select2.data('select2').dropdown.$search || select2.data('select2').selection.$search;
+            search.val($(this).val());
+            search.trigger('keyup');
+        });*/
 
         function clearPlaceSelects() {
             var placeSelects = $('.tcg-suburb-field').find('select');
@@ -148,7 +157,7 @@
         });
 
         //Admin
-        var suburbAdminSelect = $('select#woocommerce_the_courier_guy_shopArea');
+        var suburbAdminSelect = $('select.tcg-suburb-field');
         if (suburbAdminSelect.length > 0) {
             suburbAdminSelect.select2({
                 placeholder: "Start typing Suburb name...",
@@ -165,7 +174,6 @@
                     },
                     closeOnSelect: true,
                     processResults: function (data) {
-                        suburbAdminSelect.children('option').remove();
                         var results = [];
                         $.each(data, function (index, item) {
                             results.push({
@@ -179,55 +187,14 @@
                     },
                     cache: false
                 }
-            })
+            }).on("change", function (evt) {
+                $(this).children().each(function (k, v) {
+                    if (k == 1) {
+                        $('#woocommerce_the_courier_guy_shopPlace').val($(v).text());
+                    }
+                });
+            });
         }
-
-        var suburbAdminSelectBind = $('select#woocommerce_the_courier_guy_shopArea_bind');
-        if (suburbAdminSelectBind.length > 0) {
-            suburbAdminSelectBind.select2({
-                placeholder: "Start typing Suburb name...",
-                minimumInputLength: 3,
-                ajax: {
-                    url: theCourierGuy.url,
-                    dataType: 'json',
-                    delay: 350,
-                    data: function (term) {
-                        return {
-                            q: term, // search term
-                            action: 'wc_tcg_get_places'
-                        };
-                    },
-                    closeOnSelect: true,
-                    processResults: function (data) {
-                        suburbAdminSelectBind.children('option').remove();
-                        var results = [];
-                        $.each(data, function (index, item) {
-                            results.push({
-                                id: item.suburb_key,
-                                text: item.suburb_value
-                            });
-                        });
-                        return {
-                            results: results,
-                        };
-                    },
-                    cache: false
-                }
-            })
-        }
-
-        $('select#woocommerce_the_courier_guy_shopArea_bind').on('change', function (ev) {
-            var bindHub = $('select#woocommerce_the_courier_guy_shopArea_bind option:selected');
-            var bindPlace = $('input#woocommerce_the_courier_guy_shopPlace_bind');
-            bindPlace.val(bindHub[0].innerText);
-        })
-
-        $('select#woocommerce_the_courier_guy_shopArea').on('change', function (ev) {
-            var areaHub = $('select#woocommerce_the_courier_guy_shopArea option:selected');
-            var areaPlace = $('input#woocommerce_the_courier_guy_shopPlace');
-            areaPlace.val(areaHub[0].innerText);
-        })
-
         if (typeof woocommerce_admin !== 'undefined') {
             woocommerce_admin['i18n_disclaimer_error'] = 'Please accept this disclaimer.';
             woocommerce_admin['i18n_dimension_required'] = 'Please enter a dimension here';
