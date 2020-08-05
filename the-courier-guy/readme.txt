@@ -1,10 +1,10 @@
 === The Courier Guy Shipping for WooCommerce ===
 Contributors: appinlet
 Tags: ecommerce, e-commerce, woocommerce, shipping, courier
-Requires at least: 4.9.8
+Requires at least: 5.4.2
 Tested up to: 5.4
-Requires PHP: 5.6
-Stable tag: 4.1.1
+Requires PHP: 7.2
+Stable tag: 4.2.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -171,3 +171,33 @@ and individual product dimensions.
 
 
 == Changelog ==
+= 4.2.2 - Jul 31, 2020
+* Fix malformed number error.
+* Use WC() session rather than $_SESSION to fix missing shipping information on orders.
+* Fix null string issue.
+* Add NFS service.
+* Add binding of single source hub to second destination hub
+* Fix variable product calculations.
+* Make shipping insurance on checkout optional.
+
+= 4.2.1 - Jul 29, 2020
+* Remove delivery date selection from checkout.
+
+= 4.2.0 - Jul 25, 2020
+* Add conditional free shipping feature.
+* Add custom label and location for suburb area field.
+* Fix shipment notifications.
+* Fix parcel size, volume and weight calculations.
+* Add parcel dimension configuration at both global and product levels.
+* Add order id as WayBill reference.
+* Add order notes for Parcel Perfect endpoint queries.
+* Problem of variable products not calculating resolved with new methods.
+* Adjust Waybill position and add clickable link in emails.
+* Fix deprecated code warnings.
+* Fix PHP missing index warnings.
+* Fix collections submitted for the following day.
+* Fix contact number is present where the name is supposed to go.
+* Add option: If free shipping is active, remove all other shipping methods from checkout.
+* Add option: Enable free shipping if selected products are in the cart.
+* Add option: Enable free shipping if shipping total is a selected percentage of the total order value.
+* Added VAT option for TCG shipping.
