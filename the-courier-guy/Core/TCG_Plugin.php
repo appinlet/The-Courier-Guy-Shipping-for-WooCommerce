@@ -110,7 +110,6 @@ class TCG_Plugin extends CustomPlugin
     public function updateShippingPropertiesFromCheckout($postData)
     {
         parse_str($postData, $parameters);
-
         $addressPrefix = 'shipping_';
         if (!isset($parameters['ship_to_different_address']) || $parameters['ship_to_different_address'] != true) {
             $addressPrefix = 'billing_';
@@ -178,11 +177,11 @@ class TCG_Plugin extends CustomPlugin
             $waybill = $wpdb->get_results($wpdb->prepare($query, [ $order->get_id() ]));
             if ( $waybill && count($waybill) > 0 ) {
                 $waybillNo = $waybill[0]->meta_value;
-            }
-            echo <<<HTML
+                echo <<<HTML
 <br><br><span>Your Waybill: $waybillNo <a href="https://thecourierguy.pperfect.com/?w=$waybillNo">
   Click me to track</a></span><br><br>
 HTML;
+            }
         } else {
             return;
         }

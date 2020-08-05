@@ -1,10 +1,10 @@
 === The Courier Guy Shipping for WooCommerce ===
 Contributors: appinlet
 Tags: ecommerce, e-commerce, woocommerce, shipping, courier
-Requires at least: 5.4.2
-Tested up to: 5.4
+Requires at least: 4.9.8
+Tested up to: 5.4.2
 Requires PHP: 7.2
-Stable tag: 4.2.2
+Stable tag: 4.2.3
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -16,7 +16,7 @@ The Courier Guy extension for WooCommerce enables you to ship product using The 
 
 = Why choose The Courier Guy? =
 
-The Courier Guy has built a strong reputation through strong customer relations and effective personal service. Today The Courier Guy is trusted, recognized and the fastest growing courier company in South Africa.
+The Courier Guy has built a strong reputation through strong customer relations and effective personal service. Today The Courier Guy is trusted, recognised and the fastest growing courier company in South Africa.
 
 == Installation ==
 
@@ -37,7 +37,7 @@ Automatic installation is the easiest option — WordPress will handle the file 
 In the search field type “The Courier Guy Shipping for WooCommerce,” then click “Search Plugins.” Once you’ve found us, you can view details about it such as the point release, rating, and description. Most importantly of course, you can install it by! Click “Install Now,” and WordPress will take it from there.
 
 = MANUAL INSTALLATION =
-Manual installation method requires downloading the 'The Courier Guy Shipping for WooCommerce' plugin and uploading it to your web server via your favorite FTP application. The WordPress codex contains instructions on how to do this here.
+Manual installation method requires downloading the 'The Courier Guy Shipping for WooCommerce' plugin and uploading it to your web server via your favourite FTP application. The WordPress codex contains instructions on how to do this here.
 
 = UPDATING =
 Automatic updates should work smoothly, but we still recommend you back up your site.
@@ -66,6 +66,9 @@ The Courier Guy
 
 **Account number**
 The account number supplied by The Courier Guy for integration purposes.
+
+**Tax status**
+VAT applies or not
 
 **Username**
 The username supplied by The Courier Guy for integration purposes.
@@ -107,8 +110,8 @@ Percentage markup to be applied to each quote.
 **Automatically Submit Collection Order**
 This will determine whether or not the collection order is automatically submitted to The Courier Guy after checkout completion.
 
-**South Africa Only**
-This will determine whether or not to hide/show The Courier Guy 'Suburb/Area' select when changing countries on the checkout page.
+**Ship internationally using other carriers**
+When enabled, this will hide The Courier Guy 'Suburb/Area' when changing countries on the checkout page and will not make the field 'required'. If unsure, leave this disabled.
 
 **LOF Only Service**
 This will determine whether to display ONLY the 'LOF: Local Overnight Flyer' service option on checkout, if the response from The Courier Guy quote contains the 'LOF: Local Overnight Flyer' service.
@@ -124,16 +127,16 @@ Select a service to add or remove label override.
 
 **Product Quantity per Parcel**
 This will allow for a single parcel to be allotted per the configured 'Product Quantity per Parcel' value.
-This will apply when more than one product type is included per order, or if there is only one product
-type in the order but its parcel is not configured.
-If this facility is not required, leave this field blank.
+PLEASE NOTE: Altering the 'Product Quantity Per Parcel' setting may cause quotes to be inaccurate and The Courier Guy will not be responsible for these inaccurate quotes.
 
-**Product Dimensions per Parcel**
-Set the global parcel dimensions (length/width/height) if using the configuration above.
-These are global settings applied to all products, but product parcel settings (where set) will take precedence
-over these settings.
-These are required if the global parcel quantity is set. Dimensions will default to 50cm each for
-backward compatibility with earlier plugin versions where these could not be set.
+**Length of Global Parcel**
+Length of the global parcel - required if Product Quantity per Parcel is set
+
+**Width of Global Parcel**
+Width of the global parcel - required if Product Quantity per Parcel is set
+
+**Height of Global Parcel**
+Height of the global parcel - required if Product Quantity per Parcel is set
 
 **Waybill PDF Paper Size**
 This is the paper size used when generating Waybill print PDF.
@@ -144,6 +147,32 @@ The Courier Guy cannot guarantee that the generic Waybill print PDF template wil
 This is the number of copies generated per Waybill print PDF.
 This setting is used in conjunction with a custom Waybill print PDF template.
 The Courier Guy cannot guarantee that the generic Waybill print PDF template will look good for all copy amounts.
+
+**Enable shipping insurance**
+This will enable the shipping insurance field on the checkout page
+
+**Enable free shipping**
+This will enable free shipping over a specified amount
+
+**Rates for free Shipping**
+Select the rates that you wish to enable for free shipping
+
+**Amount for free Shipping**
+Enter the amount for free shipping when enabled
+
+**Percentage for free Shipping**
+Enter the percentage (shipping of product) that qualifies for free shipping when enabled. Zero to disable
+
+**Enable free shipping from product setting**
+This will enable free shipping if the product is included in the basket
+
+**Suburb location**
+Select the location of the Suburb field on checkout form.
+The Suburb field will be displayed after the selected location.
+
+**Suburb title**
+Enter the title for the Suburb field.
+This custom Suburb Title will be displayed on the checkout form.
 
 **Frequently Asked Questions**
 
@@ -161,7 +190,7 @@ This allows for several items of a product to be shipped as a parcel. Examples m
 where from 1 to Product Quantity Per Parcel are shipped in a single parcel.
 If the "Product Quantity per Parcel" is left blank this feature is disabled and the global parcel settings will
 apply. Otherwise the positive value is used.
-As an example,if the Product Quantity per Parcel is 10, an order of 1, 5 or 10 items will ship in one parcel, while an order of
+As an example, if the Product Quantity per Parcel is 10, an order of 1, 5 or 10 items will ship in one parcel, while an order of
 14 items will ship in two parcels - one with 10 items and one with 4 items. In all cases the parcel size will be identical
 but the parcel weight will depend on the number of items inside.
 
@@ -169,14 +198,17 @@ Parcel dimensions for a product specific parcel can be set here, and preferably 
 If the dimensions are not set (left blank), an algorithm is used to calculate the parcel size based on the allowed quantity
 and individual product dimensions.
 
-
 == Changelog ==
+= 4.2.3 - Aug 05, 2020
+* Fix Call to undefined method ParcelPerfectApiPayload::factorise() if settings not configured.
+* Improve ambiguous label "South Africa Only" -> "Ship internationally using other carriers".
+* Waybill in email invalid if ‘collect from courier guy’ is not enabled.
+
 = 4.2.2 - Jul 31, 2020
 * Fix malformed number error.
 * Use WC() session rather than $_SESSION to fix missing shipping information on orders.
 * Fix null string issue.
 * Add NFS service.
-* Add binding of single source hub to second destination hub
 * Fix variable product calculations.
 * Make shipping insurance on checkout optional.
 

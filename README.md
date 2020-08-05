@@ -13,5 +13,5 @@ The Courier Guy has built a strong reputation through strong customer relations 
 
 ## Contributors & Developers
 “The Courier Guy Shipping for WooCommerce” is open source software. The following people have contributed to this plugin:
-- [Lynch Solutions](http://lynchsolutions.co.za/)
 - [App Inlet](https://www.appinlet.com/)
+- [Lynch Solutions](http://lynchsolutions.co.za/)

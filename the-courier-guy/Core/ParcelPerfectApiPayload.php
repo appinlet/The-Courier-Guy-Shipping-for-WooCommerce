@@ -7,6 +7,7 @@
  */
 class ParcelPerfectApiPayload
 {
+    public $globalFactor = 50;
 
     /**
      * ParcelPerfectApiPayload constructor.
@@ -20,9 +21,9 @@ class ParcelPerfectApiPayload
      *
      * @return array
      */
-    private function getOriginPayload($parameters, $package)
+    private function getOriginPayload($parameters)
     {
-        $ret = [
+        return [
             'accnum' => $parameters['account'],
             'reference' => '',
             'origperadd1' => $parameters['shopAddress1'],
@@ -39,22 +40,6 @@ class ParcelPerfectApiPayload
             'notifyorigpers' => 1,
             'origperemail' => $parameters['shopEmail'],
         ];
-
-        if($package && isset($package['destination']['place'])) {
-            if ($package['destination']['place'] === $parameters['shopPlace_bind']) {
-                $ret['origperadd1'] = $parameters['shopAddress1_bind'];
-                $ret['origperadd2'] = $parameters['shopAddress2_bind'];
-                $ret['origperadd3'] = $parameters['shopCity_bind'];
-                $ret['origperphone'] = $parameters['shopPhone_bind'];
-                $ret['origplace'] = $parameters['shopArea_bind'];
-                $ret['origtown'] = $parameters['shopPlace_bind'];
-                $ret['origpercontact'] = $parameters['contact_name_bind'];
-                $ret['origpercode'] = $parameters['shopPostalCode_bind'];
-            }
-        }
-
-        return $ret;
-
     }
 
     /**
@@ -273,15 +258,14 @@ class ParcelPerfectApiPayload
                             $entry['dim2'] = $globalParcelDim[1];
                             $entry['dim3'] = $globalParcelDim[2];
                         } else {
-                            $factors = $this->factorise($globalParcelItems);
                             if ( $product->has_dimensions() ) {
                                 $dim[0] = (int) $product->get_width();
                                 $dim[1] = (int) $product->get_height();
                                 $dim[2] = (int) $product->get_length();
                                 sort($dim);
-                                $entry['dim1'] = $dim[0] * $factors[2];
-                                $entry['dim2'] = $dim[1] * $factors[1];
-                                $entry['dim3'] = $dim[2] * $factors[0];
+                                $entry['dim1'] = $dim[0] * $this->globalFactor;
+                                $entry['dim2'] = $dim[1] * $this->globalFactor;
+                                $entry['dim3'] = $dim[2] * $this->globalFactor;
                             } elseif ( empty($entry['dim1']) ) {
                                 $entry['dim1'] = 1;
                                 $entry['dim2'] = 1;
@@ -343,15 +327,14 @@ class ParcelPerfectApiPayload
                                 $entry['dim2'] = $productParcelDim[1];
                                 $entry['dim3'] = $productParcelDim[2];
                             } else {
-                                $factors = $this->factorise($maxProductQuantityPerParcel);
                                 if ( $product->has_dimensions() ) {
                                     $dim[0] = (int) $product->get_width();
                                     $dim[1] = (int) $product->get_height();
                                     $dim[2] = (int) $product->get_length();
                                     sort($dim);
-                                    $entry['dim1'] = $dim[0] * $factors[2];
-                                    $entry['dim2'] = $dim[1] * $factors[1];
-                                    $entry['dim3'] = $dim[2] * $factors[0];
+                                    $entry['dim1'] = $dim[0] * $this->globalFactor;
+                                    $entry['dim2'] = $dim[1] * $this->globalFactor;
+                                    $entry['dim3'] = $dim[2] * $this->globalFactor;
                                 } elseif ( empty($entry['dim1']) ) {
                                     $entry['dim1'] = 1;
                                     $entry['dim2'] = 1;
@@ -387,15 +370,14 @@ class ParcelPerfectApiPayload
                                 $entry['dim2'] = $globalParcelDim[1];
                                 $entry['dim3'] = $globalParcelDim[2];
                             } else {
-                                $factors = $this->factorise($globalParcelItems);
                                 if ( $product->has_dimensions() ) {
                                     $dim[0] = (int) $product->get_width();
                                     $dim[1] = (int) $product->get_height();
                                     $dim[2] = (int) $product->get_length();
                                     sort($dim);
-                                    $entry['dim1'] = $dim[0] * $factors[2];
-                                    $entry['dim2'] = $dim[1] * $factors[1];
-                                    $entry['dim3'] = $dim[2] * $factors[0];
+                                    $entry['dim1'] = $dim[0] * $this->globalFactor;
+                                    $entry['dim2'] = $dim[1] * $this->globalFactor;
+                                    $entry['dim3'] = $dim[2] * $this->globalFactor;
                                 } elseif ( empty($entry['dim1']) ) {
                                     $entry['dim1'] = 1;
                                     $entry['dim2'] = 1;
@@ -464,21 +446,10 @@ class ParcelPerfectApiPayload
     {
         /** @var TCG_Plugin $TCG_Plugin */
         global $TCG_Plugin;
-
-        $postFields = [];
-        if(isset($_POST['post_data'])) {
-            $postData = filter_var($_POST['post_data'], FILTER_SANITIZE_STRING);
-            parse_str($postData, $postFields);
-        }
-
-        if(count($postFields) > 0){
-            $package['destination']['place'] = $postFields['billing_tcg_place_lookup_place_label'];
-        }
-
         $result = [];
         $customShippingProperties = $TCG_Plugin->getShippingCustomProperties();
         if (!empty($parameters) && !empty($customShippingProperties['tcg_place_id']) && !empty($customShippingProperties['tcg_place_label'])) {
-            $originPayload = $this->getOriginPayload($parameters, $package);
+            $originPayload = $this->getOriginPayload($parameters);
             $destinationPayload = $this->getDestinationPayloadForQuote($package);
             $insurancePayload = $this->getInsurancePayloadForQuote();
             $detailsPayload = array_merge($originPayload, ['reference' => $destinationPayload['destpers'],], $destinationPayload, $insurancePayload);
